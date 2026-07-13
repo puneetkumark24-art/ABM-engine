@@ -14,4 +14,3 @@ venv/
 .venv/
 *.env
 .env
-.fuse_hidden*
