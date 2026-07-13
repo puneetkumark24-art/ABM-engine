@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{% if rel %}Edit connection{% else %}Add vendor / subsidiary{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{% if rel %}Edit connection — {{ vendor_org.canonical_name }}{% else %}Add vendor / subsidiary to {{ org.canonical_name }}{% endif %}</h1>
+    <p><a href="/bank/{{ org.id }}" class="link">&larr; Back to {{ org.canonical_name }}</a></p>
+</div>
+
+{% if error %}
+<div class="card" style="border-left:3px solid #dc2626;">
+    <div class="card-body" style="color:#991b1b; font-size:13px;">{{ error }}</div>
+</div>
+{% endif %}
+
+<form method="post" action="{% if rel %}/bank/{{ org.id }}/vendor/{{ rel.id }}/edit{% else %}/bank/{{ org.id }}/vendor/new{% endif %}">
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:640px;">
+
+            {% if not rel %}
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Existing organization on the dashboard</label>
+                <select name="existing_org_id" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <option value="">— Not on the dashboard yet / type a name below —</option>
+                    {% for o in orgs %}
+                    <option value="{{ o.id }}">{{ o.canonical_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Or type a new vendor / subsidiary name</label>
+                <input type="text" name="vendor_name" value="{{ form.vendor_name or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. Tarabut Gateway">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Type (only used if creating a new organization above)</label>
+                <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                    {% for value, label in type_tag_options %}
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; cursor:pointer;">
+                        <input type="checkbox" name="type_tags" value="{{ value }}" {% if value == 'vendor' %}checked{% endif %}>
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div style="font-size:14px; color:#1e293b;"><strong>{{ vendor_org.canonical_name }}</strong> <span style="color:#94a3b8;">— to change which organization this connects to, delete this connection and add a new one.</span></div>
+            {% endif %}
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Relationship type</label>
+                <select name="relationship_type" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    {% for rt in relationship_types %}
+                    <option value="{{ rt }}" {% if form.relationship_type == rt %}selected{% endif %}>{{ rt|replace('_',' ')|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Strength</label>
+                <select name="strength" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    {% for s in strengths %}
+                    <option value="{{ s }}" {% if form.strength == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Confidence (%)</label>
+                <input type="number" name="confidence" min="0" max="100" value="{{ form.confidence if form.confidence is defined else 50 }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Context / notes (optional)</label>
+                <textarea name="context" rows="3" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit;">{{ form.context or '' }}</textarea>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; gap:10px;">
+            <button type="submit" style="padding:10px 24px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">{% if rel %}Save{% else %}Add connection{% endif %}</button>
+            <a href="/bank/{{ org.id }}" style="padding:10px 24px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

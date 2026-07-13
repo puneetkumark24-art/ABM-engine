@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}{{ bank.canonical_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ bank.canonical_name }} <span style="color:#94a3b8; font-size:16px; font-weight:400;">{{ bank.name_ar or '' }}</span></h1>
+    <p>{{ bank.types }} — {{ bank.headquarters_city }}{% if bank.headquarters_city %}, {% endif %}{{ bank.headquarters_country }}
+    {% if bank.decimal_priority == 'tier_1' %}<span class="badge badge-tier1" style="margin-left:8px;">TIER 1</span>
+    {% elif bank.decimal_priority == 'tier_2' %}<span class="badge badge-tier2" style="margin-left:8px;">TIER 2</span>{% endif %}
+    {% if bank.website %} — <a href="{{ bank.website }}" target="_blank" class="link">{{ bank.website }}</a>{% endif %}
+    </p>
+    <a href="/uploads/new?org_id={{ request.view_args.org_id }}" style="display:inline-block; margin-top:10px; padding:8px 16px; border-radius:8px; background:#1B3A5C; color:#fff; text-decoration:none; font-size:13px;">&#8593; Upload intelligence for this bank</a>
+    <a href="/uploads/new?org_id={{ request.view_args.org_id }}&filetype=pdf" style="display:inline-block; margin-top:10px; margin-left:8px; padding:8px 16px; border-radius:8px; background:#fff; border:1px solid #1B3A5C; color:#1B3A5C; text-decoration:none; font-size:13px;">&#128196; Upload PDF (connection source)</a>
+    <a href="/uploads/new?org_id={{ request.view_args.org_id }}&filetype=image" style="display:inline-block; margin-top:10px; margin-left:8px; padding:8px 16px; border-radius:8px; background:#fff; border:1px solid #1B3A5C; color:#1B3A5C; text-decoration:none; font-size:13px;">&#128247; Upload image (connection source)</a>
+    <a href="/bank/{{ request.view_args.org_id }}/delete" style="display:inline-block; margin-top:10px; margin-left:8px; padding:8px 16px; border-radius:8px; background:#fff; border:1px solid #dc2626; color:#dc2626; text-decoration:none; font-size:13px;">Delete this bank</a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><div class="number">{{ bank.total_contacts }}</div><div class="label">Total Contacts</div></div>
+    <div class="stat-card"><div class="number">{{ tier_counts.get('Tier 1', 0) }}</div><div class="label">Tier 1</div></div>
+    <div class="stat-card"><div class="number">{{ tier_counts.get('Tier 2', 0) }}</div><div class="label">Tier 2</div></div>
+    <div class="stat-card"><div class="number">{{ tier_counts.get('Tier 3', 0) }}</div><div class="label">Tier 3</div></div>
+    <div class="stat-card"><div class="number">{{ indian_count }}</div><div class="label">Indian-Origin</div></div>
+    <div class="stat-card"><div class="number">{{ csuite_count }}</div><div class="label">C-Suite</div></div>
+    <div class="stat-card"><div class="number">{{ champions_count }}</div><div class="label">Champions</div></div>
+    <div class="stat-card"><div class="number">{{ ecosystem_vendors|length }}</div><div class="label">Vendors/Subsidiaries</div></div>
+</div>
+
+{% if document_intel %}
+<!-- DOCUMENT INTELLIGENCE: PDFs/images read immediately on upload — rule-based summary +
+     detected organization mentions, one click away from a real connection-map entry. -->
+<div class="card" id="document-intelligence">
+    <div class="card-header">
+        <h2>Document Intelligence</h2>
+        <span class="badge badge-purple">{{ document_intel|length }} document{{ 's' if document_intel|length != 1 else '' }}</span>
+    </div>
+    <div class="card-body">
+        {% for d in document_intel %}
+        <div class="intel-item">
+            <div class="intel-title">
+                {{ d.filename }}
+                <span class="badge {% if d.status == 'processed' %}badge-green{% else %}badge-red{% endif %}">{{ d.status|title }}</span>
+                <a href="/uploads/{{ d.id }}/download" class="link" style="font-size:12px; margin-left:6px;">Download</a>
+            </div>
+            {% if d.summary %}
+            <div class="intel-body">{{ d.summary }}</div>
+            {% endif %}
+            {% if d.processing_notes %}
+            <div class="intel-meta">{{ d.processing_notes }}</div>
+            {% endif %}
+            {% if d.entities %}
+            <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;">
+                {% for e in d.entities %}
+                {% if e.is_connected %}
+                <span class="badge badge-green" title="Already on the connection map">&#10003; {{ e.name }} ({{ (e.relationship_type or '')|replace('_',' ')|title }})</span>
+                {% else %}
+                <a href="/bank/{{ request.view_args.org_id }}/vendor/new?vendor_name={{ e.name|urlencode }}&relationship_type={{ e.relationship_type|urlencode }}{% if e.context %}&context={{ e.context|urlencode }}{% endif %}"
+                   class="badge badge-amber" style="text-decoration:none; cursor:pointer;"
+                   title="{{ e.context or 'Detected in this document' }}">
+                    + {{ e.name }} — add as {{ (e.relationship_type or 'vendor')|replace('_',' ') }}
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <p style="color:#94a3b8; font-size:11px; margin-top:12px;">
+            Rule-based extraction, not AI — it flags Title-Case phrases that look like organization
+            names near keywords like "vendor"/"subsidiary"/"regulated by". Review before adding;
+            amber chips are one click away from a real connection, green checks are already on the map.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- LIVE BIBLE SCORE -->
+<div class="card">
+    <div class="card-header">
+        <h2>Account Score</h2>
+        <a href="/bank/{{ request.view_args.org_id }}/score/edit" class="link" style="font-size:13px;">
+            {% if acc and acc.scored_at %}Recalculate score &rarr;{% else %}Score this account &rarr;{% endif %}
+        </a>
+    </div>
+    <div class="card-body">
+        {% if acc and acc.scored_at %}
+        <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:center;">
+            <div>
+                <span class="badge {% if acc.priority == 'HOT' %}badge-green{% elif acc.priority == 'WARM' %}badge-amber{% else %}badge-tier3{% endif %}" style="font-size:14px; padding:6px 14px;">{{ acc.priority }}</span>
+            </div>
+            <div><div class="s-num">{{ '%.1f'|format(acc.effective_opportunity or 0) }}</div><div class="s-label">Effective Opportunity</div></div>
+            <div><div class="s-num">{{ '%.2f'|format(acc.decision_score or 0) }}</div><div class="s-label">Decision Score</div></div>
+            <div><div class="s-num">{{ acc.tier }}</div><div class="s-label">Sales Tier</div></div>
+            <div style="color:#94a3b8; font-size:12px;">Scored {{ acc.scored_at.strftime('%d %b %Y') if acc.scored_at else '' }}</div>
+        </div>
+        {% else %}
+        <p style="color:#64748b; font-size:13px;">No live score yet — this account is showing its static tier only. Score it using the actual signals and contact data loaded for this bank.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- COMPREHENSIVE CONTACTS TABLE — every contact loaded for this bank, filterable/paginated -->
+{% include "_contacts_table.html" %}
+
+<!-- ECOSYSTEM: vendors, subsidiaries, connector paths -->
+<div class="card">
+    <div class="card-header">
+        <h2>Ecosystem</h2>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <a href="/bank/{{ request.view_args.org_id }}/connection-map" class="link" style="font-size:13px;">Connection map &rarr;</a>
+            {% if ecosystem_vendors %}<a href="/bank/{{ request.view_args.org_id }}/flow" class="link" style="font-size:13px;">People flow map &rarr;</a>{% endif %}
+            <a href="/bank/{{ request.view_args.org_id }}/vendor/new" class="link" style="font-size:13px;">+ Add vendor / subsidiary</a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if ecosystem_vendors %}
+        <div style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">Vendors &amp; subsidiaries connected to this bank</div>
+        <table style="margin-bottom:20px;">
+            <tr><th>Organization</th><th>Type</th><th>Relationship</th><th>Strength</th><th>Contacts</th><th></th></tr>
+            {% for v in ecosystem_vendors %}
+            <tr>
+                <td><a href="/bank/{{ v.org_id }}" class="link"><strong>{{ v.canonical_name }}</strong></a></td>
+                <td>{% for t in v.type_tags %}<span class="badge badge-blue" style="margin-right:4px;">{{ t|replace('_',' ')|title }}</span>{% endfor %}</td>
+                <td>{{ (v.relationship_type or '')|replace('_',' ')|title }}</td>
+                <td><span class="badge {% if v.strength == 'Strong' %}badge-green{% elif v.strength == 'Medium' %}badge-amber{% else %}badge-tier3{% endif %}">{{ v.strength or '' }}</span>{% if v.confidence %} <span style="color:#94a3b8; font-size:11px;">{{ (v.confidence*100)|int }}%</span>{% endif %}</td>
+                <td>{% if v.contact_count %}<a href="/bank/{{ v.org_id }}" class="link">{{ v.contact_count }}</a>{% else %}0{% endif %}</td>
+                <td style="white-space:nowrap;">
+                    <a href="/bank/{{ request.view_args.org_id }}/vendor/{{ v.rel_id }}/edit" class="link" style="font-size:12px;">Edit</a>
+                    <form method="post" action="/bank/{{ request.view_args.org_id }}/vendor/{{ v.rel_id }}/delete" style="display:inline;">
+                        <button type="submit" class="link" style="background:none; border:none; padding:0; margin-left:8px; font-size:12px; cursor:pointer; color:#dc2626;">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color:#94a3b8; font-size:13px; margin-bottom:16px;">No vendors or subsidiaries connected yet.</p>
+        {% endif %}
+
+        {% if connected_banks %}
+        <div style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">This organization also connects to other banks</div>
+        <table style="margin-bottom:20px;">
+            <tr><th>Bank</th><th>Relationship</th><th>Strength</th></tr>
+            {% for b in connected_banks %}
+            <tr>
+                <td><a href="/bank/{{ b.org_id }}" class="link"><strong>{{ b.canonical_name }}</strong></a></td>
+                <td>{{ (b.relationship_type or '')|replace('_',' ')|title }}</td>
+                <td><span class="badge {% if b.strength == 'Strong' %}badge-green{% elif b.strength == 'Medium' %}badge-amber{% else %}badge-tier3{% endif %}">{{ b.strength or '' }}</span></td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+
+        {% if connector_chains %}
+        <div style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">Connector / introduction paths</div>
+        {% for c in connector_chains %}
+        <div class="intel-item">
+            <div class="intel-title">{{ c.from_name }}{% if c.from_org %} <span style="color:#94a3b8; font-weight:400;">({{ c.from_org }})</span>{% endif %} <span style="color:#94a3b8;">&rarr;</span> {{ c.to_name }}</div>
+            <div class="intel-body">{{ c.context or '' }}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="section-grid">
+<!-- INITIATIVES -->
+<div class="card">
+    <div class="card-header">
+        <h2>Initiatives / Signals</h2>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span class="badge badge-green">{{ initiatives|length }} tracked</span>
+            <a href="/bank/{{ request.view_args.org_id }}/signal/new" class="link" style="font-size:13px;">+ Add signal</a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% for i in initiatives %}
+        <div class="intel-item"{% if i.is_decayed %} style="opacity:0.55;"{% endif %}>
+            <div class="intel-title">
+                {{ i.name }}
+                <span class="badge badge-blue">{{ i.initiative_type|replace('_',' ')|title }}</span>
+                {% if i.urgency %}<span class="badge {% if i.urgency == 'CRITICAL' %}badge-red{% elif i.urgency == 'HIGH' %}badge-amber{% elif i.urgency == 'MEDIUM' %}badge-blue{% else %}badge-tier3{% endif %}">{{ i.urgency }}</span>{% endif %}
+                {% if i.is_decayed %}<span class="badge badge-tier3" title="Past its expected {{ i.decay_category|lower }} decay window — may be stale">Decayed</span>{% endif %}
+                {% if i.partner_classification %}<span class="badge {% if i.partner_classification == 'COMPETITIVE_CLOSURE' %}badge-red{% elif i.partner_classification == 'INTEGRATION_OPPORTUNITY' %}badge-green{% elif i.partner_classification == 'COMPLIANCE_ALIGNMENT' %}badge-blue{% else %}badge-tier3{% endif %}" title="{{ i.partner_classification_label }}">{{ i.partner_classification|replace('_',' ')|title }}</span>{% endif %}
+                <span class="badge {% if i.status == 'actioned' %}badge-green{% else %}badge-amber{% endif %}">{{ i.status|replace('_',' ')|title }}</span>
+                <a href="/signal/{{ i.id }}/edit" class="link" style="font-size:12px; margin-left:6px;">Edit</a>
+                <form method="post" action="/signal/{{ i.id }}/toggle" style="display:inline;">
+                    <input type="hidden" name="next" value="/bank/{{ request.view_args.org_id }}">
+                    <button type="submit" class="link" style="background:none; border:none; padding:0; font-size:12px; cursor:pointer; color:#1B3A5C;">{% if i.is_actioned %}Mark not actioned{% else %}Mark actioned{% endif %}</button>
+                </form>
+            </div>
+            <div class="intel-body">{{ i.description }}</div>
+            {% if i.initiative_type == 'rfp' and (i.deadline or i.estimated_value or i.scope_description or i.contact_person) %}
+            <div class="intel-body" style="background:#fffbeb; border-left:2px solid #d97706; padding:8px 10px; margin-top:6px;">
+                {% if i.deadline %}<strong>Deadline:</strong> {{ i.deadline.strftime('%d %b %Y') }}{% endif %}
+                {% if i.estimated_value %} · <strong>Est. value:</strong> {{ i.estimated_value }}{% endif %}
+                {% if i.contact_person %} · <strong>Contact:</strong> {{ i.contact_person }}{% endif %}
+                {% if i.source_of_knowledge %} · <strong>Heard via:</strong> {{ i.source_of_knowledge }}{% endif %}
+                {% if i.scope_description %}<div style="margin-top:4px;">{{ i.scope_description }}</div>{% endif %}
+            </div>
+            {% endif %}
+            <div class="intel-meta">
+                Decimal relevance:
+                <div class="relevance-bar"><div class="relevance-bar-fill" style="width:{{ (i.decimal_relevance * 100)|int }}%;"></div></div>
+                <strong>{{ '%.0f'|format(i.decimal_relevance * 100) }}%</strong>
+                {% if i.relevant_products %} — Products: {{ i.relevant_products|join(', ') }}{% endif %}
+                {% if i.source %} — Source: {{ i.source }}{% endif %}
+                {% if i.confidence_score %} — Confidence: {{ (i.confidence_score * 100)|int }}% ({{ i.decay_category|lower }}){% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#94a3b8; font-size:13px;">No signals logged yet for this bank.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- TECH STACK -->
+{% if tech_stack %}
+<div class="card">
+    <div class="card-header"><h2>Tech Stack</h2><span class="badge badge-purple">{{ tech_stack|length }} systems</span></div>
+    <div class="card-body">
+        {% for t in tech_stack %}
+        <div class="intel-item">
+            <div class="intel-title">{{ t.name|replace('_',' ')|title }}</div>
+            <div class="intel-body">{{ t.value }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+</div>
+
+{% endblock %}

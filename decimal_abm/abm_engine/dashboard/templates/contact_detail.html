@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% block title %}{{ contact.full_name }}{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+<div><h1>{{ contact.full_name }}</h1><p>{{ contact.role or '' }} {% if contact.institution %}at {{ contact.institution }}{% endif %}</p></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<span class="tier {{ contact.tier or '' }}">{{ contact.tier or 'COLD' }}</span>
+<span class="rtype {{ (contact.relationship_type or '')|lower }}">{{ contact.relationship_type or 'TARGET' }}</span>
+{% if contact.do_not_contact %}<span class="warn-badge">DO NOT CONTACT</span>{% endif %}
+{% if is_unsubscribed %}<span class="warn-badge">UNSUBSCRIBED</span>{% endif %}
+</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+<div class="card"><h3>Contact Info</h3><div class="detail-grid">
+<div><div class="field-label">Email</div><div class="field-value">{{ contact.email or '—' }}</div></div>
+<div><div class="field-label">Phone</div><div class="field-value">{{ contact.phone or '—' }}</div></div>
+<div><div class="field-label">WhatsApp</div><div class="field-value">{{ contact.whatsapp or '—' }}</div></div>
+<div><div class="field-label">LinkedIn</div><div class="field-value">{% if contact.linkedin_url %}<a href="{{ contact.linkedin_url }}" target="_blank">Profile</a>{% else %}—{% endif %}</div></div>
+<div><div class="field-label">Persona</div><div class="field-value">{{ contact.persona or '—' }}</div></div>
+<div><div class="field-label">Warmness</div><div class="field-value">{{ contact.warmness or 'Cold' }}</div></div>
+</div></div>
+<div class="card"><h3>Scoring & Compliance</h3><div class="detail-grid">
+<div><div class="field-label">Priority Score</div><div class="field-value" style="font-size:28px;font-weight:700;color:{% if (contact.priority_score or 0)>=75 %}var(--red){% elif (contact.priority_score or 0)>=50 %}var(--yellow){% else %}var(--accent){% endif %};">{{ contact.priority_score or 0 }}/100</div></div>
+<div><div class="field-label">Touch Count</div><div class="field-value" style="font-size:28px;font-weight:700;">{{ contact.current_touch or 0 }}</div></div>
+<div><div class="field-label">Consent Status</div><div class="field-value"><span style="color:{% if contact.consent_status=='opted_in' %}var(--green){% elif contact.consent_status=='denied' %}var(--red){% else %}var(--yellow){% endif %}">{{ contact.consent_status or 'none' }}</span>
+<div class="btn-group" style="margin-top:6px;"><button class="btn btn-sm btn-approve" onclick="setConsent({{ contact.id }},'opted_in')">Opted In</button><button class="btn btn-sm btn-reject" onclick="setConsent({{ contact.id }},'denied')">Denied</button></div></div></div>
+<div><div class="field-label">Consent Source</div><div class="field-value">{{ contact.consent_source or '—' }}</div></div>
+<div><div class="field-label">Outreach Angle</div><div class="field-value">{{ contact.outreach_angle or '—' }}</div></div>
+<div><div class="field-label">Product Fit</div><div class="field-value">{{ contact.product_fit or '—' }}</div></div>
+<div style="grid-column:span 2;"><div class="field-label">Key Signal</div><div class="field-value">{{ contact.key_signal or '—' }}</div></div>
+{% if contact.background_notes %}<div style="grid-column:span 2;"><div class="field-label">Background</div><div class="field-value" style="font-size:13px;color:var(--text-dim);">{{ contact.background_notes }}</div></div>{% endif %}
+{% if contact.pitch_notes %}<div style="grid-column:span 2;"><div class="field-label">Pitch Notes</div><div class="field-value" style="font-size:13px;color:var(--text-dim);">{{ contact.pitch_notes }}</div></div>{% endif %}
+</div></div></div>
+{% if pending %}<div class="card" style="margin-top:16px;"><h3>Pending Drafts</h3>{% for d in pending %}<div style="padding:10px 0;border-bottom:1px solid var(--border);">{% if d.subject %}<div class="draft-subject">{{ d.subject }}</div>{% endif %}<div class="draft-body">{{ d.body_en }}</div><div class="btn-group" style="margin-top:8px;"><button class="btn btn-approve btn-sm" onclick="approve({{ d.id }})">Approve</button><button class="btn btn-reject btn-sm" onclick="reject({{ d.id }})">Reject</button></div></div>{% endfor %}</div>{% endif %}
+<div class="card" style="margin-top:16px;"><h3>Touch History</h3>{% if touches %}<table><tr><th>Date</th><th>Channel</th><th>Subject</th><th>Status</th></tr>{% for t in touches %}<tr><td style="font-size:12px;">{{ t.sent_at }}</td><td>{{ t.touch_type }}</td><td>{{ t.subject or '—' }}</td><td><span class="status {{ t.status|lower }}">{{ t.status }}</span></td></tr>{% endfor %}</table>{% else %}<div class="empty"><p>No outreach history</p></div>{% endif %}</div>
+<div style="margin-top:16px;"><a href="/contacts" style="font-size:13px;">Back to contacts</a></div>
+{% endblock %}
+{% block scripts %}<script>
+async function approve(id){const r=await fetch(`/api/draft/${id}/approve`,{method:'POST'});const d=await r.json();if(d.ok)location.reload();else alert(d.error||'Failed')}
+async function reject(id){const n=prompt('Reason:');const r=await fetch(`/api/draft/${id}/reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notes:n||''})});if(r.ok)location.reload()}
+async function setConsent(cid,status){const src=prompt('Source (e.g. LinkedIn, email reply, conference):');const r=await fetch(`/api/contact/${cid}/consent`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent_status:status,consent_source:src||''})});if(r.ok)location.reload()}
+</script>{% endblock %}

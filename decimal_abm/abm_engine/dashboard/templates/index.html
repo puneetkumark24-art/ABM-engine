@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="topbar">
+  <h1>Overview</h1>
+  <div class="topbar-actions">
+    <button class="btn btn-primary" onclick="runGenerate()">&#9654; Generate drafts now</button>
+    <button class="btn" onclick="runSignals()">&#9670; Run intelligence check</button>
+  </div>
+</div>
+<div class="content">
+
+  <!-- Stats row -->
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="stat-card stat-hot">
+      <div class="stat-num">{{ stats.contacts.hot or 0 }}</div>
+      <div class="stat-label">HOT contacts</div>
+    </div>
+    <div class="stat-card stat-warm">
+      <div class="stat-num">{{ stats.contacts.warm or 0 }}</div>
+      <div class="stat-label">WARM contacts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#0f6e56">{{ stats.drafts.pending or 0 }}</div>
+      <div class="stat-label">Drafts awaiting review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#185fa5">{{ stats.news.unread or 0 }}</div>
+      <div class="stat-label">Unread intelligence items</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Pending drafts preview -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <strong>Pending message drafts</strong>
+        <a href="/drafts" class="btn btn-sm">View all</a>
+      </div>
+      {% if drafts %}
+        {% for d in drafts %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0ede8">
+          <div>
+            <div style="font-weight:500">{{ d.full_name }}</div>
+            <div style="font-size:12px;color:#666">{{ d.institution }} · T{{ d.touch_number }} {{ d.touch_type }}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <span class="tier-{{ d.tier }}">{{ d.tier }}</span>
+            <a href="/drafts/{{ d.id }}" class="btn btn-sm">Review</a>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state" style="padding:24px">No pending drafts</div>
+      {% endif %}
+    </div>
+
+    <!-- Intelligence feed preview -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <strong>Latest intelligence</strong>
+        <a href="/intelligence" class="btn btn-sm">View all</a>
+      </div>
+      {% if news %}
+        {% for item in news %}
+        <div class="news-item">
+          <div style="margin-bottom:4px">
+            <span class="news-cat cat-{{ item.category }}">{{ item.category }}</span>
+            <span style="font-size:11px;color:#888">{{ item.institution or item.contact_name or '' }}</span>
+          </div>
+          <div style="font-size:13px;font-weight:500;color:#1a2b3c">{{ item.headline[:80] }}</div>
+          <div style="font-size:12px;color:#666;margin-top:2px">{{ item.summary[:100] }}{% if item.summary|length > 100 %}...{% endif %}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state" style="padding:24px">No new intelligence. Run a check to fetch latest news.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Contact breakdown -->
+  <div class="card">
+    <strong>Contact universe</strong>
+    <div class="grid-4" style="margin-top:14px">
+      <div class="card-sm">
+        <div style="font-size:20px;font-weight:600;color:#0f6e56">{{ stats.contacts.targets or 0 }}</div>
+        <div style="font-size:12px;color:#666">Target contacts</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">Bank / FI decision makers</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:20px;font-weight:600;color:#185fa5">{{ stats.contacts.vendors or 0 }}</div>
+        <div style="font-size:12px;color:#666">Vendor contacts</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">Mambu, Ripple, Efigence...</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:20px;font-weight:600;color:#534ab7">{{ stats.contacts.connectors or 0 }}</div>
+        <div style="font-size:12px;color:#666">Connectors</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">KPMG, Mastercard, ITC...</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:20px;font-weight:600;color:#854f0b">{{ stats.contacts.champions or 0 }}</div>
+        <div style="font-size:12px;color:#666">Internal champions</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">ITQAN, SNB sub-executives</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+async function runGenerate() {
+  toast('Generating drafts...', true);
+  const r = await api('/api/run/generate_drafts');
+  toast(r.ok ? `Generated ${r.generated} drafts` : r.message, r.ok);
+  if(r.ok) setTimeout(() => location.reload(), 1500);
+}
+async function runSignals() {
+  toast('Running intelligence check...', true);
+  const r = await api('/api/run/signals');
+  toast(r.ok ? `Found ${r.total} new intelligence items` : r.message, r.ok);
+  if(r.ok) setTimeout(() => location.reload(), 1500);
+}
+</script>
+{% endblock %}

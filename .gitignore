@@ -1,0 +1,17 @@
+# Large offering source files (too big for GitHub, not code)
+drip_platform/incoming/offerings/decimal offering/Video Banking-20260629T064753Z-3-001.zip
+drip_platform/incoming/offerings/decimal offering/RFP-20260629T064829Z-3-001.zip
+drip_platform/incoming/offerings/decimal offering/Savings Account-20260629T064810Z-3-001.zip
+drip_platform/incoming/offerings/decimal offering/Vahana Platform-20260629T064754Z-3-001.zip
+drip_platform/incoming/offerings/decimal offering/Sales Force Management-20260629T064820Z-3-001.zip
+
+# Common junk
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+venv/
+.venv/
+*.env
+.env
+.fuse_hidden*

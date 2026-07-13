@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Connection-Flow Map — {{ org.canonical_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ org.canonical_name }} — Connection-Flow Map</h1>
+    <p><a href="/bank/{{ org.id }}" class="link">&larr; Back to {{ org.canonical_name }}</a></p>
+</div>
+
+{% if not has_flow_data %}
+<div class="card"><div class="card-body">
+    <p style="color:#64748b;">No ecosystem flow data has been loaded for this bank yet. This view populates once
+    connector/champion/decision-maker/C-suite contacts (tagged via the BD dossier import, or set manually on a
+    person's edit page) exist for this bank or its subsidiaries.</p>
+</div></div>
+{% else %}
+
+<style>
+.fmap-poster { background:#0B1F3A; border-radius:10px; overflow:hidden; margin-bottom:18px; }
+.fmap-header { padding:18px 22px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+.fmap-header h2 { color:#fff; font-size:19px; margin:0 0 6px 0; letter-spacing:0.3px; }
+.fmap-header .fmap-summary { color:#C9D6E8; font-size:12.5px; }
+.fmap-header .fmap-tags { text-align:right; }
+.fmap-header .fmap-confidential { color:#D4A017; font-weight:700; font-size:11px; letter-spacing:0.5px; }
+.fmap-header .fmap-meta { color:#C9D6E8; font-size:10.5px; margin-top:4px; }
+.fmap-download { display:inline-block; margin-top:10px; padding:8px 16px; background:#D4A017; color:#0B1F3A;
+    border-radius:6px; text-decoration:none; font-size:12.5px; font-weight:700; }
+.fmap-download:hover { background:#e6b32a; }
+
+.fmap-columns { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; padding:0 18px 20px 18px; }
+@media (max-width: 1100px) { .fmap-columns { grid-template-columns:repeat(2, 1fr); } }
+
+.fmap-col-header { padding:10px 12px; border-radius:6px; color:#fff; font-weight:700; font-size:12.5px;
+    text-align:center; letter-spacing:0.3px; margin-bottom:10px; }
+.fmap-col-decimal .fmap-col-header { background:#0B1F3A; border:1px solid #C9D6E8; }
+.fmap-col-connectors .fmap-col-header { background:#B8860B; }
+.fmap-col-champions .fmap-col-header { background:#7A1F1F; }
+.fmap-col-csuite .fmap-col-header { background:#1B3A5C; }
+
+.fmap-list-box { background:#F4F1EA; border-radius:6px; padding:12px 14px; }
+.fmap-list-box ul { margin:0; padding-left:16px; }
+.fmap-list-box li { font-size:12px; color:#2b2b2b; margin-bottom:6px; }
+
+.fmap-card { border-radius:6px; padding:9px 11px; margin-bottom:8px; color:#fff; }
+.fmap-col-connectors .fmap-card { background:#B8860B; }
+.fmap-col-csuite .fmap-card { background:#1B3A5C; }
+.fmap-card-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.fmap-card-name { font-weight:700; font-size:12.5px; }
+.fmap-card-badge { font-size:10px; font-weight:700; background:rgba(255,255,255,0.18); padding:1px 7px; border-radius:10px; white-space:nowrap; }
+.fmap-card-title { font-size:11px; color:#E8ECF2; margin-top:2px; }
+.fmap-card-org { font-size:11px; color:#E8ECF2; opacity:0.85; }
+.fmap-card-contact { font-size:10.5px; color:#E8ECF2; opacity:0.75; margin-top:2px; }
+
+.fmap-group { background:#7A1F1F; border-radius:6px; padding:9px 11px; margin-bottom:8px; color:#fff; }
+.fmap-group-name { font-weight:700; font-size:12.5px; display:flex; justify-content:space-between; }
+.fmap-group-stars { color:#F5D67A; font-size:11px; }
+.fmap-group-member { font-size:11px; color:#F1E3E3; margin-top:4px; }
+
+.fmap-empty { color:#94a3b8; font-size:12px; font-style:italic; }
+.fmap-footer-note { padding:10px 22px 16px 22px; color:#C9D6E8; font-size:10.5px; }
+</style>
+
+<div class="fmap-poster">
+    <div class="fmap-header">
+        <div>
+            <h2>{{ org.canonical_name.upper() }} × DECIMAL — CONNECTION-FLOW MAP</h2>
+            <div class="fmap-summary">{{ summary_line }}</div>
+            <a href="/bank/{{ org.id }}/flow/pdf" class="fmap-download">&#8681; Download as PDF</a>
+        </div>
+        <div class="fmap-tags">
+            <div class="fmap-confidential">CONFIDENTIAL — NOT FOR DISTRIBUTION</div>
+            <div class="fmap-meta">Decimal Technologies BD Research</div>
+        </div>
+    </div>
+
+    <div id="flow-wrap" style="position:relative;">
+    <div class="fmap-columns">
+
+        <div class="fmap-col-decimal">
+            <div class="fmap-col-header">DECIMAL</div>
+            <div class="fmap-list-box">
+                {% if decimal_items %}
+                <ul>
+                    {% for item in decimal_items %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <span class="fmap-empty">No product fit scored for this bank yet.</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="fmap-col-connectors">
+            <div class="fmap-col-header">EXTERNAL CONNECTORS</div>
+            {% for p in connectors %}
+            <div class="fmap-card" id="pid-{{ p.id }}">
+                <div class="fmap-card-top">
+                    <span class="fmap-card-name">{{ p.full_name }}</span>
+                    {% if p.bd_priority %}<span class="fmap-card-badge">{{ p.bd_priority }}</span>{% endif %}
+                </div>
+                <div class="fmap-card-title">{{ p.current_title or '' }}</div>
+                <div class="fmap-card-org">{{ p.org_name or '' }}</div>
+                {% if p.phone %}<div class="fmap-card-contact">{{ p.phone }}</div>{% endif %}
+                {% if p.primary_email %}<div class="fmap-card-contact">{{ p.primary_email }}{% if p.email_confidence == 'Unverified' %} (unverified){% endif %}</div>{% endif %}
+            </div>
+            {% else %}
+            <span class="fmap-empty">Nothing loaded yet</span>
+            {% endfor %}
+        </div>
+
+        <div class="fmap-col-champions">
+            <div class="fmap-col-header">SUBSIDIARY CHAMPIONS</div>
+            {% for g in subsidiary_groups %}
+            <div class="fmap-group">
+                <div class="fmap-group-name">
+                    <span>{{ g.canonical_name }}</span>
+                    {% if g.stars %}<span class="fmap-group-stars">{{ g.stars }}</span>{% endif %}
+                </div>
+                {% for m in g.members %}
+                <div class="fmap-group-member" id="pid-{{ m.id }}">{{ m.full_name }}{% if m.current_title %} — {{ m.current_title }}{% endif %}</div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <span class="fmap-empty">Nothing loaded yet</span>
+            {% endfor %}
+        </div>
+
+        <div class="fmap-col-csuite">
+            <div class="fmap-col-header">C-SUITE TARGETS</div>
+            {% for p in c_suite %}
+            <div class="fmap-card" id="pid-{{ p.id }}">
+                <div class="fmap-card-top">
+                    <span class="fmap-card-name">{{ p.full_name }}</span>
+                    {% if p.bd_priority %}<span class="fmap-card-badge">{{ 'CEO' if p.bd_priority == 'Final Authority' else p.bd_priority }}</span>{% endif %}
+                </div>
+                <div class="fmap-card-title">{{ p.current_title or '' }}</div>
+                {% if p.phone %}<div class="fmap-card-contact">{{ p.phone }}</div>{% endif %}
+                {% if p.primary_email %}<div class="fmap-card-contact">{{ p.primary_email }}</div>{% endif %}
+            </div>
+            {% else %}
+            <span class="fmap-empty">Nothing loaded yet</span>
+            {% endfor %}
+        </div>
+
+    </div>
+    <svg id="flow-lines" style="position:absolute; top:0; left:0; pointer-events:none; overflow:visible;"></svg>
+    </div>
+
+    <div class="fmap-footer-note">
+        Auto-generated from the ecosystem data loaded for this bank — not a hand-drawn diagram, so it updates as
+        contacts, subsidiaries, and relationships are added or edited. Rule-based, not AI.
+    </div>
+</div>
+
+{% if edges %}
+<p style="color:#64748b; font-size:12px; margin-top:-8px;">
+    {{ edges|length }} connector path{{ 'es' if edges|length != 1 else '' }} drawn above — hover a line's endpoints
+    for who introduces whom. Full context for each path is on the bank's main page under "Connector / introduction paths".
+</p>
+{% endif %}
+
+<script>
+const FLOW_EDGES = {{ edges|tojson }};
+
+function drawFlowLines() {
+    const svg = document.getElementById('flow-lines');
+    const wrap = document.getElementById('flow-wrap');
+    if (!svg || !wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
+    svg.setAttribute('width', wrapRect.width);
+    svg.setAttribute('height', wrapRect.height);
+    svg.innerHTML = '<defs><marker id="flow-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#D4A017"></path></marker></defs>';
+
+    FLOW_EDGES.forEach(function (e) {
+        const fromEl = document.getElementById('pid-' + e.from);
+        const toEl = document.getElementById('pid-' + e.to);
+        if (!fromEl || !toEl) return;
+        const fr = fromEl.getBoundingClientRect();
+        const tr = toEl.getBoundingClientRect();
+        const x1 = fr.right - wrapRect.left;
+        const y1 = fr.top + fr.height / 2 - wrapRect.top;
+        const x2 = tr.left - wrapRect.left;
+        const y2 = tr.top + tr.height / 2 - wrapRect.top;
+        const dx = Math.max(30, (x2 - x1) / 2);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2);
+        path.setAttribute('stroke', '#D4A017');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('opacity', '0.85');
+        path.setAttribute('marker-end', 'url(#flow-arrow)');
+        if (e.context) {
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = e.context;
+            path.appendChild(title);
+        }
+        svg.appendChild(path);
+    });
+}
+
+window.addEventListener('load', drawFlowLines);
+window.addEventListener('resize', drawFlowLines);
+</script>
+{% endif %}
+{% endblock %}

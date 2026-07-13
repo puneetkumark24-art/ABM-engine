@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Intelligence{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Intelligence Feed</h1>
+    <p>Signals from banks, vendors, SAMA, leadership changes, and CRM updates</p>
+</div>
+
+<div class="card">
+    {% if signals %}
+    {% for s in signals %}
+    <div class="signal-item" id="signal-{{ s.id }}" style="{% if s.is_read %}opacity:0.5;{% endif %}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <span class="signal-source">{{ s.source or 'signal' }}</span>
+                {% if s.relevance %}
+                <span style="font-size:11px; color:var(--text-dim); margin-left:8px;">{{ s.relevance }}</span>
+                {% endif %}
+            </div>
+            {% if not s.is_read %}
+            <button class="btn btn-sm" style="background:var(--surface2);color:var(--text-dim);" onclick="markRead({{ s.id }})">Mark read</button>
+            {% endif %}
+        </div>
+        <div class="signal-title">{{ s.title }}</div>
+        <div class="signal-summary">{{ s.summary or '' }}</div>
+        {% if s.url %}
+        <a href="{{ s.url }}" target="_blank" style="font-size:12px;">Read source →</a>
+        {% endif %}
+        <div class="signal-time">{{ s.created_at }}</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty">
+        <h3>No signals yet</h3>
+        <p>Run signal detection to scan for news:</p>
+        <code style="background:var(--surface2);padding:8px 14px;border-radius:6px;display:inline-block;margin-top:12px;">python -m abm_engine signals</code>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function markRead(id) {
+    const res = await fetch(`/api/signal/${id}/read`, {method:'POST'});
+    if (res.ok) {
+        document.getElementById(`signal-${id}`).style.opacity = '0.5';
+    }
+}
+</script>
+{% endblock %}

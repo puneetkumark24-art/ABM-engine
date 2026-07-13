@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-header"><h1>ABM Intelligence Dashboard</h1><p>Decimal Technologies — KSA Market Intelligence</p></div>
+
+<div class="stats-row">
+<div class="stat-card total"><div class="num">{{ acct_stats.total or 0 }}</div><div class="label">Accounts</div></div>
+<div class="stat-card hot"><div class="num">{{ acct_stats.hot or 0 }}</div><div class="label">Hot</div></div>
+<div class="stat-card warm"><div class="num">{{ acct_stats.warm or 0 }}</div><div class="label">Warm</div></div>
+<div class="stat-card cold"><div class="num">{{ acct_stats.cold or 0 }}</div><div class="label">Cold</div></div>
+<div class="stat-card" style="border-color:var(--accent)"><div class="num" style="color:var(--accent)">{{ signal_count }}</div><div class="label">Signals</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+<div class="card"><h3>Account Universe</h3>
+<table>
+<tr><td>Commercial Banks</td><td style="text-align:right;font-weight:600;">{{ acct_stats.banks or 0 }}</td></tr>
+<tr><td>Digital Banks</td><td style="text-align:right;font-weight:600;">{{ acct_stats.digital or 0 }}</td></tr>
+<tr><td>Fintechs</td><td style="text-align:right;font-weight:600;">{{ acct_stats.fintech or 0 }}</td></tr>
+</table>
+<div style="margin-top:12px;"><a href="/accounts" class="btn btn-send btn-sm">View All Accounts →</a></div>
+</div>
+
+<div class="card"><h3>Intelligence Status</h3>
+<table>
+<tr><td>Total Signals</td><td style="text-align:right;font-weight:600;">{{ signal_count }}</td></tr>
+<tr><td>Products Mapped</td><td style="text-align:right;font-weight:600;">{{ product_count }}</td></tr>
+<tr><td>Contacts Loaded</td><td style="text-align:right;font-weight:600;">{{ contact_count }}</td></tr>
+<tr><td>Pending Drafts</td><td style="text-align:right;font-weight:600;">{{ pending_count }}</td></tr>
+</table>
+</div>
+</div>
+
+<div class="card" style="margin-top:16px;"><h3>Recent Signals</h3>
+{% if recent_signals %}{% for s in recent_signals %}
+<div class="signal-item">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;">
+<div>
+<span class="signal-source">{{ s.source_name or s.category or 'signal' }}</span>
+{% if s.institution %}<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(79,140,255,.12);color:var(--accent);margin-left:6px;font-weight:600;">{{ s.institution }}</span>{% endif %}
+{% if s.relevance_score and s.relevance_score >= 8 %}<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:var(--red-bg);color:var(--red);margin-left:4px;">HIGH</span>{% endif %}
+</div>
+<span class="signal-time">{{ s.detected_at }}</span>
+</div>
+<div class="signal-title">{{ s.headline }}</div>
+<div class="signal-summary">{{ s.summary or '' }}</div>
+</div>{% endfor %}
+<div style="margin-top:12px;"><a href="/intelligence" class="btn btn-sm" style="background:var(--surface2);color:var(--text);">View All Signals →</a></div>
+{% else %}<div class="empty"><p>No signals yet. Engine scans every 6 hours.</p></div>{% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;"><h3>Top Accounts</h3>
+{% if top_accounts %}<table>
+<tr><th>Account</th><th>Segment</th><th>Tier</th><th>Digital Maturity</th><th>Core Banking</th><th>Score</th></tr>
+{% for a in top_accounts %}<tr>
+<td><a href="/account/{{ a.id }}">{{ a.name }}</a></td>
+<td style="font-size:12px;">{{ a.segment or '—' }}</td>
+<td><span class="tier {{ a.tier or 'COLD' }}">{{ a.tier or '—' }}</span></td>
+<td style="text-align:center;">{% if a.digital_maturity %}<div class="score-bar"><div class="score-fill" style="width:{{ a.digital_maturity * 10 }}%;background:{% if a.digital_maturity >= 8 %}var(--green){% elif a.digital_maturity >= 5 %}var(--yellow){% else %}var(--red){% endif %};"></div></div>{{ a.digital_maturity }}/10{% endif %}</td>
+<td style="font-size:12px;color:var(--text-dim);">{{ a.core_banking or '—' }}</td>
+<td>{{ a.composite_score or 0 }}</td>
+</tr>{% endfor %}</table>
+{% else %}<div class="empty"><p>No accounts loaded</p></div>{% endif %}
+</div>
+{% endblock %}

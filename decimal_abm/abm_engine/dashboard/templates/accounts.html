@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% block title %}Accounts{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Account Universe</h1><p>KSA Banks, Digital Banks, and Fintechs — your target market</p></div>
+
+<div class="filters"><form method="get" action="/accounts" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+<input type="text" name="q" value="{{ search }}" placeholder="Search accounts...">
+<select name="tier" onchange="this.form.submit()"><option value="">All Tiers</option>{% for t in all_tiers %}<option value="{{ t }}" {% if tier_filter==t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+<select name="segment" onchange="this.form.submit()"><option value="">All Segments</option>{% for s in all_segments %}<option value="{{ s }}" {% if seg_filter==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+<button type="submit" class="btn btn-send btn-sm">Search</button>
+{% if search or tier_filter or seg_filter %}<a href="/accounts" class="btn btn-reject btn-sm">Clear</a>{% endif %}
+</form></div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;">
+{% for a in accounts %}
+<a href="/account/{{ a.id }}" style="text-decoration:none;color:inherit;">
+<div class="card" style="cursor:pointer;transition:border-color .15s;min-height:180px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;">
+<div>
+<div style="font-size:16px;font-weight:600;color:var(--text);">{{ a.name }}</div>
+<div style="font-size:12px;color:var(--text-dim);margin-top:2px;">{{ a.segment or '' }}{% if a.sub_segment %} · {{ a.sub_segment }}{% endif %}</div>
+</div>
+<span class="tier {{ a.tier or 'COLD' }}">{{ a.tier or '—' }}</span>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;text-align:center;">
+<div><div style="font-size:18px;font-weight:600;color:var(--accent);">{{ a.contact_count or 0 }}</div><div style="font-size:10px;color:var(--text-dim);">CONTACTS</div></div>
+<div><div style="font-size:18px;font-weight:600;color:var(--yellow);">{{ a.signal_count or 0 }}</div><div style="font-size:10px;color:var(--text-dim);">SIGNALS</div></div>
+<div><div style="font-size:18px;font-weight:600;color:var(--green);">{{ a.composite_score or 0 }}</div><div style="font-size:10px;color:var(--text-dim);">SCORE</div></div>
+<div><div style="font-size:18px;font-weight:600;color:var(--text-dim);">{{ a.draft_count or 0 }}</div><div style="font-size:10px;color:var(--text-dim);">DRAFTS</div></div>
+</div>
+
+<div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;">
+{% if a.core_banking %}<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--text-dim);">{{ a.core_banking }}</span>{% endif %}
+{% if a.open_banking and a.open_banking != 'Unknown' %}<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:{% if a.open_banking == 'Active' %}var(--green-bg){% else %}var(--yellow-bg){% endif %};color:{% if a.open_banking == 'Active' %}var(--green){% else %}var(--yellow){% endif %};">OB: {{ a.open_banking }}</span>{% endif %}
+{% if a.digital_maturity %}<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--text-dim);">DM: {{ a.digital_maturity }}/10</span>{% endif %}
+{% if a.employees %}<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--text-dim);">{{ a.employees }} emp</span>{% endif %}
+</div>
+</div>
+</a>
+{% endfor %}
+</div>
+
+{% if not accounts %}<div class="card"><div class="empty"><h3>No accounts match</h3></div></div>{% endif %}
+{% endblock %}

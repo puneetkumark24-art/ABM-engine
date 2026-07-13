@@ -1,0 +1,95 @@
+{# Shared comprehensive contacts table. Expects: persons (list of dicts), show_org (bool),
+   filter state vars (search, tier_filter, indian_only, seniority_filter), pagination vars
+   (page, total_pages, total_count, base_url_params for pagination links). #}
+<form class="search-bar" method="get" style="flex-wrap: wrap;">
+    <input type="text" name="q" placeholder="Search by name or title..." value="{{ search }}">
+    {% if orgs is defined %}
+    <select name="org" onchange="this.form.submit()">
+        <option value="">All Organizations</option>
+        {% for o in orgs %}<option value="{{ o.id }}" {% if org_filter == o.id %}selected{% endif %}>{{ o.canonical_name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <select name="tier" onchange="this.form.submit()">
+        <option value="">All Tiers</option>
+        {% for t in ["Tier 1", "Tier 2", "Tier 3", "Excluded"] %}
+        <option value="{{ t }}" {% if tier_filter == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+    <select name="seniority" onchange="this.form.submit()">
+        <option value="">All Seniority</option>
+        {% for s in ["c_suite", "svp_evp", "director"] %}
+        <option value="{{ s }}" {% if seniority_filter == s %}selected{% endif %}>{{ s|replace('_',' ')|title }}</option>
+        {% endfor %}
+    </select>
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#475569;">
+        <input type="checkbox" name="indian" value="1" {% if indian_only %}checked{% endif %} onchange="this.form.submit()">
+        Indian-origin only
+    </label>
+    <button type="submit" style="padding:8px 16px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer;">Filter</button>
+</form>
+
+<div class="card">
+    <div class="card-header">
+        <h2>{{ total_count }} contact{{ 's' if total_count != 1 else '' }}{% if search or tier_filter or indian_only or seniority_filter %} matching filters{% endif %}</h2>
+        <div style="display:flex; align-items:center; gap:12px;">
+            {% if request.view_args and request.view_args.org_id %}
+            <a href="/bank/{{ request.view_args.org_id }}/person/new" class="link" style="font-size:13px;">+ Add contact</a>
+            {% endif %}
+            <span class="badge badge-blue">Page {{ page }} of {{ total_pages }}</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <table>
+            <tr>
+                <th>Name</th>
+                {% if show_org %}<th>Organization</th>{% endif %}
+                <th>Title</th>
+                <th>Tier</th>
+                <th>Seniority</th>
+                <th>Indian</th>
+                <th>LinkedIn</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Outreach Status</th>
+                <th>Next Step</th>
+                <th></th>
+            </tr>
+            {% for p in persons %}
+            <tr>
+                <td><strong>{{ p.full_name }}</strong>
+                    {% if p.is_decision_maker %}<span class="badge badge-red">DM</span>{% endif %}
+                    {% if p.is_connector %}<span class="badge badge-green">Connector</span>{% endif %}
+                </td>
+                {% if show_org %}<td>{% if p.org_id %}<a href="/bank/{{ p.org_id }}" class="link">{{ p.org_name or '' }}</a>{% endif %}</td>{% endif %}
+                <td style="font-size:12px;">{{ p.current_title or '' }}</td>
+                <td>
+                    {% if p.priority_tier == 'Tier 1' %}<span class="badge badge-tier1">TIER 1</span>
+                    {% elif p.priority_tier == 'Tier 2' %}<span class="badge badge-tier2">TIER 2</span>
+                    {% elif p.priority_tier == 'Tier 3' %}<span class="badge badge-tier3">TIER 3</span>
+                    {% elif p.priority_tier %}<span class="badge badge-amber">{{ p.priority_tier }}</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:12px;">{{ (p.seniority_level or '')|replace('_',' ')|title }}</td>
+                <td>{% if p.is_indian_origin %}<span class="badge badge-purple">IN</span>{% endif %}</td>
+                <td>{% if p.linkedin_url %}<a href="{{ p.linkedin_url }}" target="_blank" class="link">Profile</a>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</td>
+                <td style="font-size:12px;">{{ p.primary_email or '' }}</td>
+                <td style="font-size:12px;">{{ p.phone or '' }}</td>
+                <td style="font-size:12px;">{{ p.last_activity_summary or 'Not contacted yet' }}</td>
+                <td style="font-size:12px;">{{ p.next_step or '' }}</td>
+                <td style="white-space:nowrap;">
+                    <a href="/person/{{ p.id }}/edit?next={{ request.full_path|urlencode }}" class="link" style="font-size:12px;">Log activity</a>
+                    <a href="/person/{{ p.id }}/delete?next={{ request.full_path|urlencode }}" class="link" style="font-size:12px; margin-left:8px; color:#dc2626;">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+{% if total_pages > 1 %}
+<div style="display:flex; gap:8px; justify-content:center; margin-bottom:24px;">
+    {% for pg in range(1, total_pages + 1) %}
+    <a href="?{{ base_url_params }}&page={{ pg }}" class="badge {% if pg == page %}badge-blue{% else %}badge-tier3{% endif %}" style="text-decoration:none;">{{ pg }}</a>
+    {% endfor %}
+</div>
+{% endif %}

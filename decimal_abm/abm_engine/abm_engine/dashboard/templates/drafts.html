@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Drafts{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Message Drafts</h1>
+    <p>Review, edit, approve or reject AI-generated outreach before anything sends</p>
+</div>
+
+<div class="filters">
+    <a href="/drafts?status=pending" class="btn {% if current_filter == 'pending' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">Pending</a>
+    <a href="/drafts?status=approved" class="btn {% if current_filter == 'approved' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">Approved</a>
+    <a href="/drafts?status=sent" class="btn {% if current_filter == 'sent' %}btn-send{% else %}btn-reject{% endif %} btn-sm">Sent</a>
+    <a href="/drafts?status=rejected" class="btn {% if current_filter == 'rejected' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">Rejected</a>
+    <a href="/drafts?status=all" class="btn {% if current_filter == 'all' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">All</a>
+</div>
+
+{% if drafts %}
+{% for d in drafts %}
+<div class="card" id="draft-{{ d.id }}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+        <div>
+            <a href="/contact/{{ d.contact_id }}" style="font-weight:600; font-size:15px;">{{ d.contact_name or 'Unknown' }}</a>
+            <span style="color:var(--text-dim); font-size:12px; margin-left:8px;">{{ d.company or '' }} · {{ d.title or '' }}</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <span class="status {{ d.status }}">{{ d.status }}</span>
+            <span style="color:var(--text-dim); font-size:11px;">{{ d.channel or 'email' }}</span>
+        </div>
+    </div>
+
+    {% if d.subject %}
+    <div class="draft-subject" style="margin-top:10px;">Subject: {{ d.subject }}</div>
+    {% endif %}
+    <div class="draft-body" id="body-{{ d.id }}">{{ d.body or '(empty)' }}</div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+        <span style="color:var(--text-dim); font-size:11px;">Created: {{ d.created_at }}</span>
+        {% if d.status == 'pending' %}
+        <div class="btn-group">
+            <button class="btn btn-approve btn-sm" onclick="approveDraft({{ d.id }})">✓ Approve</button>
+            <button class="btn btn-reject btn-sm" onclick="rejectDraft({{ d.id }})">✗ Reject</button>
+            <button class="btn btn-sm" style="background:var(--surface2);color:var(--text);" onclick="editDraft({{ d.id }})">✎ Edit</button>
+        </div>
+        {% elif d.status == 'approved' %}
+        <div class="btn-group">
+            <button class="btn btn-send btn-sm" onclick="sendDraft({{ d.id }})">📤 Send Now</button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if d.reviewer_notes %}
+    <div style="margin-top:8px; font-size:12px; color:var(--text-dim); font-style:italic;">
+        Notes: {{ d.reviewer_notes }}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+    <div class="empty">
+        <h3>No {{ current_filter }} drafts</h3>
+        <p>{% if current_filter == 'pending' %}Run <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">python -m abm_engine run</code> to generate outreach drafts{% else %}Switch filters to see other drafts{% endif %}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function approveDraft(id) {
+    const res = await fetch(`/api/draft/${id}/approve`, {method:'POST'});
+    if (res.ok) location.reload();
+}
+async function rejectDraft(id) {
+    const notes = prompt('Rejection reason (optional):');
+    const res = await fetch(`/api/draft/${id}/reject`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({notes: notes || ''})
+    });
+    if (res.ok) location.reload();
+}
+async function sendDraft(id) {
+    if (!confirm('Send this message now?')) return;
+    const res = await fetch(`/api/draft/${id}/send`, {method:'POST'});
+    const data = await res.json();
+    if (data.ok) location.reload();
+    else alert(data.error || 'Send failed');
+}
+function editDraft(id) {
+    const el = document.getElementById(`body-${id}`);
+    const current = el.innerText;
+    el.contentEditable = true;
+    el.style.border = '2px solid var(--accent)';
+    el.focus();
+    el.onblur = async function() {
+        el.contentEditable = false;
+        el.style.border = '';
+        if (el.innerText !== current) {
+            await fetch(`/api/draft/${id}/edit`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({body: el.innerText})
+            });
+        }
+    };
+}
+</script>
+{% endblock %}

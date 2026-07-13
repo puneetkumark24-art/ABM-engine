@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Drafts{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Message Drafts</h1><p>Review, edit, approve or reject before anything sends</p></div>
+<div class="filters">
+<a href="/drafts?status=pending" class="btn {% if current_filter=='pending' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">Pending</a>
+<a href="/drafts?status=approved" class="btn {% if current_filter=='approved' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">Approved</a>
+<a href="/drafts?status=sent" class="btn {% if current_filter=='sent' %}btn-send{% else %}btn-reject{% endif %} btn-sm">Sent</a>
+<a href="/drafts?status=rejected" class="btn {% if current_filter=='rejected' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">Rejected</a>
+<a href="/drafts?status=all" class="btn {% if current_filter=='all' %}btn-approve{% else %}btn-reject{% endif %} btn-sm">All</a>
+</div>
+<!-- Edit modal -->
+<div id="edit-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:200;padding:40px;overflow-y:auto;">
+<div style="max-width:600px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;">
+<div style="display:flex;justify-content:space-between;margin-bottom:16px;"><h2 style="font-size:16px;">Edit Draft</h2><button onclick="closeEditModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;">&times;</button></div>
+<input type="hidden" id="edit-id">
+<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px;">SUBJECT</label><input type="text" id="edit-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-size:14px;"></div>
+<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px;">BODY</label><textarea id="edit-body" rows="12" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-size:13px;line-height:1.6;resize:vertical;font-family:inherit;"></textarea></div>
+<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-reject" onclick="closeEditModal()">Cancel</button><button class="btn btn-approve" onclick="saveEdit()">Save</button></div>
+</div></div>
+{% if drafts %}{% for d in drafts %}
+<div class="card" id="draft-{{ d.id }}">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+<div>
+<a href="/contact/{{ d.contact_id }}" style="font-weight:600;font-size:15px;">{{ d.contact_name or 'Unknown' }}</a>
+<span style="color:var(--text-dim);font-size:12px;margin-left:8px;">{{ d.company or '' }} · {{ d.title or '' }}</span>
+{% if d.do_not_contact %}<span class="warn-badge" style="margin-left:6px;">DO NOT CONTACT</span>{% endif %}
+</div>
+<div style="display:flex;gap:8px;align-items:center;">
+<span class="status {{ d.status|lower }}">{{ d.status }}</span>
+{% if d.touch_type == 'LINKEDIN' %}<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:rgba(79,140,255,.12);color:var(--accent);font-weight:600;">LinkedIn · T{{ d.touch_number }}</span>{% else %}<span style="color:var(--text-dim);font-size:11px;">email · T{{ d.touch_number }}</span>{% endif %}
+</div></div>
+{% if d.subject %}<div class="draft-subject" style="margin-top:10px;">Subject: {{ d.subject }}</div>{% endif %}
+<div class="draft-body">{{ d.body_en or '(empty)' }}</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+<span style="color:var(--text-dim);font-size:11px;">{{ d.generated_at }}</span>
+{% if d.status == 'DRAFT' %}
+<div class="btn-group">
+<button class="btn btn-approve btn-sm" onclick="approve({{ d.id }})">Approve</button>
+<button class="btn btn-reject btn-sm" onclick="reject({{ d.id }})">Reject</button>
+<button class="btn btn-sm" style="background:var(--surface2);color:var(--text);" onclick="openEditModal({{ d.id }},'{{ d.subject|default("",true)|e }}')">Edit</button>
+<button class="btn btn-sm" style="background:var(--surface2);color:var(--accent);" onclick="useTemplate({{ d.id }})">Use as Template</button>
+</div>
+{% elif d.status == 'APPROVED' %}
+<div class="btn-group">
+{% if d.touch_type == 'LINKEDIN' and d.linkedin_url %}<a class="btn btn-sm" style="background:var(--surface2);color:var(--text);" href="{{ d.linkedin_url }}" target="_blank">Open LinkedIn</a>{% endif %}
+<button class="btn btn-send btn-sm" onclick="sendNow({{ d.id }})">Send Now</button>
+</div>
+{% elif d.status == 'REJECTED' %}
+<button class="btn btn-sm" style="background:var(--surface2);color:var(--accent);" onclick="redraft({{ d.id }})">Redraft</button>
+{% endif %}
+</div>
+{% if d.rejection_reason %}<div style="margin-top:8px;font-size:12px;color:var(--text-dim);font-style:italic;">{{ d.rejection_reason }}</div>{% endif %}
+</div>{% endfor %}
+{% else %}<div class="card"><div class="empty"><h3>No {{ current_filter }} drafts</h3><p>The engine generates drafts daily and sends approved ones every 30 minutes.</p></div></div>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+async function approve(id){const r=await fetch(`/api/draft/${id}/approve`,{method:'POST'});const d=await r.json();if(d.ok)location.reload();else alert(d.error||'Failed')}
+async function reject(id){const n=prompt('Reason (optional):');const r=await fetch(`/api/draft/${id}/reject`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notes:n||''})});if(r.ok)location.reload()}
+async function sendNow(id){if(!confirm('Send this message now?'))return;const r=await fetch(`/api/draft/${id}/send`,{method:'POST'});const d=await r.json();if(d.ok)location.reload();else alert(d.error||'Send failed')}
+async function redraft(id){if(!confirm('Delete this draft and regenerate on next cycle?'))return;const r=await fetch(`/api/draft/${id}/redraft`,{method:'POST'});if(r.ok)location.reload()}
+async function useTemplate(id){const n=prompt('Template name:','My Template');if(!n)return;const r=await fetch(`/api/draft/${id}/use-as-template`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});if(r.ok)location.href='/templates'}
+function openEditModal(id,subj){document.getElementById('edit-id').value=id;document.getElementById('edit-subject').value=subj;document.getElementById('edit-body').value=document.querySelector(`#draft-${id} .draft-body`).innerText;document.getElementById('edit-modal').style.display='block'}
+function closeEditModal(){document.getElementById('edit-modal').style.display='none'}
+async function saveEdit(){const id=document.getElementById('edit-id').value;const r=await fetch(`/api/draft/${id}/edit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subject:document.getElementById('edit-subject').value,body:document.getElementById('edit-body').value})});if(r.ok)location.reload()}
+</script>
+{% endblock %}

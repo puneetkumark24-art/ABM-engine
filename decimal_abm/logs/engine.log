@@ -1,0 +1,28 @@
+2026-06-02 11:13:09.887 | INFO     | abm_engine.database.db:init_db:221 - Database initialised at abm_engine.db
+2026-06-03 11:11:56.863 | INFO     | abm_engine.database.db:init_db:221 - Database initialised at abm_engine.db
+2026-06-03 11:12:39.971 | INFO     | abm_engine.database.db:init_db:221 - Database initialised at abm_engine.db
+2026-06-03 11:14:50.014 | INFO     | abm_engine.database.db:init_db:221 - Database initialised at abm_engine.db
+2026-06-03 11:14:50.457 | INFO     | abm_engine.core.loader:load_contacts_from_excel:133 - Loading from sheet: 'Contacts'
+2026-06-03 11:14:50.479 | INFO     | abm_engine.core.loader:load_contacts_from_excel:225 - Loaded 1 contacts, 0 skipped
+2026-06-03 11:14:50.480 | INFO     | abm_engine.scoring.engine:run:181 - ═══ Scoring Engine Started ═══
+2026-06-03 11:14:50.493 | INFO     | abm_engine.scoring.engine:run:225 - ↓ DOWNGRADED from HOT: Puneet Kumar @ Decimal Technologies (score: 85→27)
+2026-06-03 11:14:50.494 | INFO     | abm_engine.scoring.engine:run:232 - ═══ Scoring Complete: {'contacts_scored': 1, 'updated': 1, 'upgraded': 0, 'downgraded': 1} ═══
+2026-06-03 11:40:32.783 | INFO     | abm_engine.database.db:init_db:221 - Database initialised at abm_engine.db
+2026-06-03 11:40:33.729 | INFO     | abm_engine.core.loader:load_contacts_from_excel:133 - Loading from sheet: 'Contacts'
+2026-06-03 11:40:33.746 | INFO     | abm_engine.core.loader:load_contacts_from_excel:225 - Loaded 1 contacts, 0 skipped
+2026-06-03 11:40:33.748 | INFO     | abm_engine.scoring.engine:run:181 - ═══ Scoring Engine Started ═══
+2026-06-03 11:40:33.766 | INFO     | abm_engine.scoring.engine:run:225 - ↓ DOWNGRADED from HOT: Puneet Kumar @ Decimal Technologies (score: 85→27)
+2026-06-03 11:40:33.767 | INFO     | abm_engine.scoring.engine:run:232 - ═══ Scoring Complete: {'contacts_scored': 1, 'updated': 1, 'upgraded': 0, 'downgraded': 1} ═══
+2026-06-03 11:40:34.308 | INFO     | abm_engine.database.db:init_db:221 - Database initialised at abm_engine.db
+2026-07-03 17:19:55.971 | INFO     | abm_engine.database.db:init_db:222 - Database initialised at abm_engine.db
+2026-07-03 17:23:27.872 | INFO     | abm_engine.database.db:init_db:222 - Database initialised at abm_engine.db
+2026-07-03 17:23:28.467 | INFO     | abm_engine.core.loader:load_contacts_from_excel:133 - Loading from sheet: 'Contacts'
+2026-07-03 17:23:28.480 | INFO     | abm_engine.core.loader:load_contacts_from_excel:225 - Loaded 1 contacts, 0 skipped
+2026-07-03 17:23:28.481 | INFO     | abm_engine.scoring.engine:run:181 - ═══ Scoring Engine Started ═══
+2026-07-03 17:23:28.494 | INFO     | abm_engine.scoring.engine:run:225 - ↓ DOWNGRADED from HOT: Puneet Kumar @ Decimal Technologies (score: 85→27)
+2026-07-03 17:23:28.495 | INFO     | abm_engine.scoring.engine:run:232 - ═══ Scoring Complete: {'contacts_scored': 1, 'updated': 1, 'upgraded': 0, 'downgraded': 1} ═══
+2026-07-03 17:23:47.139 | INFO     | abm_engine.database.db:init_db:222 - Database initialised at abm_engine.db
+2026-07-03 17:27:08.692 | INFO     | abm_engine.database.db:init_db:222 - Database initialised at abm_engine.db
+2026-07-03 17:27:53.502 | INFO     | abm_engine.database.db:init_db:222 - Database initialised at abm_engine.db
+2026-07-03 17:27:57.163 | INFO     | abm_engine.agents.researcher:research_contact:82 - Researching Puneet Kumar @ Decimal Technologies (touch 2/5)
+2026-07-03 17:27:57.798 | ERROR    | abm_engine.agents.researcher:research_contact:140 - Research failed for Puneet Kumar: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ccf5q6LP7gDaHwkz6Hx7j'}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Review Draft{% endblock %}
+{% block content %}
+<div class="topbar">
+  <h1>Review message draft</h1>
+  <div class="topbar-actions">
+    <a href="/drafts" class="btn">&#8592; Back to drafts</a>
+  </div>
+</div>
+<div class="content">
+  <div class="grid-2">
+    <!-- Contact info -->
+    <div class="card">
+      <strong style="display:block;margin-bottom:12px">Contact</strong>
+      <div style="font-size:17px;font-weight:600">{{ draft.full_name }}</div>
+      <div style="color:#666;margin-top:4px">{{ draft.role }}</div>
+      <div style="margin-top:8px">
+        <span class="tier-{{ draft.tier }}">{{ draft.tier }}</span>
+        <span class="rel-{{ draft.relationship_type }}" style="margin-left:6px">{{ draft.relationship_type }}</span>
+      </div>
+      <div style="margin-top:12px;font-size:13px;color:#444">
+        <strong>Institution:</strong> {{ draft.institution }}<br>
+        {% if draft.email %}<strong>Email:</strong> {{ draft.email }}<br>{% endif %}
+        {% if draft.linkedin_url %}<strong>LinkedIn:</strong> <a href="{{ draft.linkedin_url }}" target="_blank">view profile</a><br>{% endif %}
+      </div>
+      {% if draft.background_notes %}
+      <div style="margin-top:12px;padding:10px;background:#f5f5f0;border-radius:6px;font-size:12px;color:#444">
+        <strong>Background:</strong> {{ draft.background_notes[:300] }}
+      </div>
+      {% endif %}
+      {% if draft.pitch_notes %}
+      <div style="margin-top:8px;padding:10px;background:#e1f5ee;border-radius:6px;font-size:12px;color:#085041">
+        <strong>Pitch angle:</strong> {{ draft.pitch_notes[:200] }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Message editor -->
+    <div class="card">
+      <strong style="display:block;margin-bottom:12px">
+        {{ draft.touch_type }} · Touch {{ draft.touch_number }}
+        <span style="font-size:12px;color:#666;font-weight:400;margin-left:8px">Hook: {{ draft.hook_used[:60] }}</span>
+      </strong>
+
+      {% if draft.touch_type == 'EMAIL' %}
+      <label style="font-size:12px;font-weight:600;color:#5f5e5a;display:block;margin-bottom:4px">Subject</label>
+      <input type="text" id="subject" value="{{ draft.subject or '' }}" style="margin-bottom:12px">
+      {% endif %}
+
+      <label style="font-size:12px;font-weight:600;color:#5f5e5a;display:block;margin-bottom:4px">Message (English)</label>
+      <textarea id="body_en" rows="12">{{ draft.body_en }}</textarea>
+
+      {% if draft.body_ar %}
+      <label style="font-size:12px;font-weight:600;color:#5f5e5a;display:block;margin:12px 0 4px">Arabic version</label>
+      <textarea id="body_ar" rows="8" dir="rtl">{{ draft.body_ar }}</textarea>
+      {% endif %}
+
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveAndApprove()">Save &amp; Approve</button>
+        <button class="btn btn-amber" onclick="approveAndSendNow()">Approve &amp; Send now</button>
+        <button class="btn" onclick="saveEdits()">Save edits only</button>
+        <button class="btn btn-danger" onclick="rejectDraft()">Reject</button>
+      </div>
+      <div id="msg" style="margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
+</div>
+<script>
+const id = {{ draft.id }};
+function getEdits() {
+  return {
+    subject: document.getElementById('subject') ? document.getElementById('subject').value : '',
+    body_en: document.getElementById('body_en').value,
+    body_ar: document.getElementById('body_ar') ? document.getElementById('body_ar').value : null,
+  };
+}
+async function saveEdits() {
+  const r = await api(`/api/draft/${id}/edit`, 'POST', getEdits());
+  document.getElementById('msg').textContent = r.message;
+}
+async function saveAndApprove() {
+  await api(`/api/draft/${id}/edit`, 'POST', getEdits());
+  const r = await api(`/api/draft/${id}/approve`);
+  toast(r.message, r.ok);
+  if(r.ok) setTimeout(() => window.location='/drafts', 1200);
+}
+async function approveAndSendNow() {
+  await api(`/api/draft/${id}/edit`, 'POST', getEdits());
+  toast('Sending...', true);
+  const r = await api(`/api/draft/${id}/approve_and_send`);
+  toast(r.message, r.ok);
+  if(r.ok) setTimeout(() => window.location='/drafts', 1500);
+}
+async function rejectDraft() {
+  const reason = prompt('Reason for rejection:') || '';
+  const r = await api(`/api/draft/${id}/reject`, 'POST', {reason});
+  toast(r.message, r.ok);
+  if(r.ok) setTimeout(() => window.location='/drafts', 1200);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>ABM Intelligence Dashboard</h1>
+    <p>Decimal Technologies — KSA Market Pipeline</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card total">
+        <div class="num">{{ total }}</div>
+        <div class="label">Total Contacts</div>
+    </div>
+    <div class="stat-card hot">
+        <div class="num">{{ by_tier.get('HOT', 0) }}</div>
+        <div class="label">🔥 Hot</div>
+    </div>
+    <div class="stat-card warm">
+        <div class="num">{{ by_tier.get('WARM', 0) }}</div>
+        <div class="label">Warm</div>
+    </div>
+    <div class="stat-card cold">
+        <div class="num">{{ by_tier.get('COLD', 0) }}</div>
+        <div class="label">Cold</div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+    <div class="card">
+        <h3>By Relationship Type</h3>
+        <table>
+            {% for rtype, count in by_type.items() %}
+            <tr>
+                <td><span class="rtype {{ rtype }}">{{ rtype }}</span></td>
+                <td style="text-align:right; font-weight:600;">{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% if not by_type %}
+        <div class="empty"><p>No contacts loaded yet</p></div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Pending Actions</h3>
+        {% if pending_count > 0 %}
+        <div style="text-align:center; padding:20px;">
+            <div style="font-size:48px; font-weight:700; color:var(--yellow);">{{ pending_count }}</div>
+            <div style="color:var(--text-dim); font-size:13px; margin-top:4px;">drafts awaiting review</div>
+            <a href="/drafts" class="btn btn-approve" style="margin-top:16px;">Review Now →</a>
+        </div>
+        {% else %}
+        <div class="empty">
+            <h3>All clear</h3>
+            <p>No pending drafts. Run <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">python -m abm_engine run</code> to generate drafts.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+    <h3>Recent Signals</h3>
+    {% if recent_signals %}
+    {% for s in recent_signals %}
+    <div class="signal-item">
+        <span class="signal-source">{{ s.source or 'signal' }}</span>
+        <div class="signal-title">{{ s.title }}</div>
+        <div class="signal-summary">{{ s.summary or '' }}</div>
+        <div class="signal-time">{{ s.created_at }}</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty">
+        <p>No signals yet. Run <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">python -m abm_engine signals</code> to scan for news.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+    <h3>Contact Directory (Top 10 by score)</h3>
+    {% if contacts %}
+    <table>
+        <tr><th>Name</th><th>Company</th><th>Title</th><th>Type</th><th>Tier</th><th>Score</th><th>Touch</th></tr>
+        {% for c in contacts[:10] %}
+        <tr>
+            <td><a href="/contact/{{ c.id }}">{{ c.name }}</a></td>
+            <td>{{ c.company }}</td>
+            <td style="color:var(--text-dim);">{{ c.title or '—' }}</td>
+            <td><span class="rtype {{ c.relationship_type or '' }}">{{ c.relationship_type or '—' }}</span></td>
+            <td><span class="tier {{ c.tier or '' }}">{{ c.tier or '—' }}</span></td>
+            <td>
+                <div class="score-bar"><div class="score-fill" style="width:{{ c.priority_score or 0 }}%;background:{% if (c.priority_score or 0) >= 75 %}var(--red){% elif (c.priority_score or 0) >= 50 %}var(--yellow){% else %}var(--accent){% endif %};"></div></div>
+                {{ c.priority_score or 0 }}
+            </td>
+            <td>{{ c.current_touch or 0 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty"><p>No contacts loaded</p></div>
+    {% endif %}
+</div>
+{% endblock %}

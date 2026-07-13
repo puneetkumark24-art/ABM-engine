@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{% if signal %}Edit Signal{% else %}Add Signal{% endif %} — {{ org.canonical_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{% if signal %}Edit Signal{% else %}Add Signal{% endif %} — {{ org.canonical_name }}</h1>
+    <p><a href="/bank/{{ org_id }}" class="link">&larr; Back to {{ org.canonical_name }}</a></p>
+</div>
+
+<form method="post">
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:640px;">
+
+            <div style="display:flex; gap:14px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Signal type</label>
+                    <select name="signal_type" id="signal_type" onchange="updateSignalFieldVisibility()" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        {% for t in signal_types %}
+                        <option value="{{ t }}" {% if signal and signal.signal_type == t %}selected{% endif %}>{{ signal_type_labels.get(t, t) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Urgency</label>
+                    <select name="urgency" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        {% for u in urgencies %}
+                        <option value="{{ u }}" {% if (signal and signal.urgency == u) or (not signal and u == 'MEDIUM') %}selected{% endif %}>{{ u }}</option>
+                        {% endfor %}
+                    </select>
+                    <div style="font-size:11px; color:#94a3b8; margin-top:4px;">RFP/Tender signals default to CRITICAL, and a competitive-closure partnership defaults to CRITICAL too, if left unset.</div>
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Title</label>
+                <input type="text" name="title" value="{{ signal.title if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. SNB announces new digital lending RFP">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Summary</label>
+                <textarea name="summary" rows="4" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit;" placeholder="What happened, why it matters for Decimal...">{{ signal.summary if signal else '' }}</textarea>
+            </div>
+
+            <div style="display:flex; gap:14px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Source</label>
+                    <input type="text" name="source" value="{{ signal.source if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. LinkedIn, news article, contact call">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">URL (optional)</label>
+                    <input type="text" name="url" value="{{ signal.url if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="https://...">
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Relevant Decimal product (optional)</label>
+                <input type="text" name="product_match" value="{{ signal.product_match if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. LOS, Collections, Digital Onboarding">
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" name="is_actioned" id="is_actioned" style="width:auto;" {% if signal and signal.is_actioned %}checked{% endif %}>
+                <label for="is_actioned" style="margin:0; font-size:13px;">Already actioned</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" id="tender-fields" style="border-left:3px solid #d97706;">
+    <div class="card-header"><h2>Tender / RFP details (SIG-TENDER)</h2></div>
+    <div class="card-body">
+        <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Log what you know now — most KSA RFP awareness comes from
+        network intelligence (someone tells you) rather than a published tender, so partial information here is still worth capturing.</p>
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:640px;">
+            <div style="display:flex; gap:14px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Response deadline</label>
+                    <input type="date" name="deadline" value="{{ signal.deadline.strftime('%Y-%m-%d') if signal and signal.deadline else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Estimated value</label>
+                    <input type="text" name="estimated_value" value="{{ signal.estimated_value if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. SAR 5-10M">
+                </div>
+            </div>
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Scope</label>
+                <textarea name="scope_description" rows="3" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit;" placeholder="What's actually being procured">{{ signal.scope_description if signal else '' }}</textarea>
+            </div>
+            <div style="display:flex; gap:14px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Contact person</label>
+                    <input type="text" name="contact_person" value="{{ signal.contact_person if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="Who at the bank to reach">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Source of knowledge</label>
+                    <input type="text" name="source_of_knowledge" value="{{ signal.source_of_knowledge if signal else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="Who told us about this">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" id="partnership-fields" style="border-left:3px solid #7A1F1F;">
+    <div class="card-header"><h2>Partnership classification (SIG-PARTNER)</h2></div>
+    <div class="card-body">
+        <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Auto-suggested from the title/summary text against a known
+        competitor/complementary/regulator vendor list — review and override if it's wrong. Leave on "Auto-detect" to let it
+        re-classify from the text every time you save.</p>
+        {% if signal and signal.partner_classification %}
+        <div style="margin-bottom:12px; font-size:13px;">
+            Currently: <span class="badge {% if signal.partner_classification == 'COMPETITIVE_CLOSURE' %}badge-red{% elif signal.partner_classification == 'INTEGRATION_OPPORTUNITY' %}badge-green{% elif signal.partner_classification == 'COMPLIANCE_ALIGNMENT' %}badge-blue{% else %}badge-tier3{% endif %}">{{ signal.partner_classification|replace('_',' ')|title }}</span>
+            {% if signal.partner_classification_matched_vendor %}<span style="color:#94a3b8;">— matched "{{ signal.partner_classification_matched_vendor }}"</span>{% endif %}
+        </div>
+        {% endif %}
+        <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Override (optional)</label>
+        <select name="partner_classification" style="width:100%; max-width:400px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            <option value="">Auto-detect from title/summary</option>
+            <option value="COMPETITIVE_CLOSURE">Competitive closure (competitor may be winning this account)</option>
+            <option value="INTEGRATION_OPPORTUNITY">Integration opportunity (complementary player)</option>
+            <option value="COMPLIANCE_ALIGNMENT">Compliance alignment (regulator/ecosystem body)</option>
+            <option value="NEUTRAL">Neutral (advisory/infrastructure, no competitive signal)</option>
+        </select>
+    </div>
+</div>
+
+<script>
+function updateSignalFieldVisibility() {
+    var type = document.getElementById('signal_type').value;
+    document.getElementById('tender-fields').style.display = (type === 'rfp') ? 'block' : 'none';
+    document.getElementById('partnership-fields').style.display = (type === 'partnership') ? 'block' : 'none';
+}
+window.addEventListener('DOMContentLoaded', updateSignalFieldVisibility);
+</script>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; gap:10px;">
+            <button type="submit" style="padding:10px 24px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">{% if signal %}Save changes{% else %}Add signal{% endif %}</button>
+            <a href="/bank/{{ org_id }}" style="padding:10px 24px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

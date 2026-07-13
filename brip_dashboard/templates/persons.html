@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Persons{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Persons Directory</h1><p>All individuals in the intelligence platform</p></div>
+<form class="search-bar" method="get">
+    <input type="text" name="q" placeholder="Search by name or title..." value="{{ search }}">
+    <select name="org" onchange="this.form.submit()">
+        <option value="">All Organizations</option>
+        {% for o in orgs %}<option value="{{ o.short_name }}" {% if org_filter == o.short_name %}selected{% endif %}>{{ o.canonical_name }}</option>{% endfor %}
+    </select>
+</form>
+<div class="card"><div class="card-header"><h2>{{ persons|length }} persons</h2></div><div class="card-body">
+<table><tr><th>Name</th><th>Title</th><th>Organization</th><th>Seniority</th><th>Function</th><th>Email</th><th>Status</th></tr>
+{% for p in persons %}<tr>
+<td><strong>{{ p.full_name }}</strong>{% if p.is_decision_maker %} <span class="badge badge-red">DM</span>{% endif %}{% if p.is_connector %} <span class="badge badge-green">Connector</span>{% endif %}</td>
+<td>{{ p.current_title }}</td>
+<td><a href="/bank/{{ p.org_short }}" class="link">{{ p.org_name or '' }}</a></td>
+<td>{{ (p.seniority_level or '')|replace('_',' ')|title }}</td>
+<td>{{ (p.primary_function or '')|replace('_',' ')|title }}</td>
+<td style="font-size:12px;">{{ p.primary_email or '' }}</td>
+<td><span class="badge {% if p.decimal_relationship_status == 'researched' %}badge-blue{% elif p.decimal_relationship_status == 'contacted' %}badge-green{% else %}badge-tier3{% endif %}">{{ p.decimal_relationship_status }}</span></td>
+</tr>{% endfor %}
+</table></div></div>
+{% endblock %}

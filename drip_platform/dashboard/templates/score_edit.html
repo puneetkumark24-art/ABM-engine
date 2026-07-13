@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Score — {{ org.canonical_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Score {{ org.canonical_name }}</h1>
+    <p><a href="/bank/{{ org.id }}" class="link">&larr; Back to {{ org.canonical_name }}</a></p>
+</div>
+
+{% if is_suggested %}
+<div class="card" style="border-left:3px solid #d97706;">
+    <div class="card-body" style="font-size:13px; color:#92400e;">
+        The fields below are starting-point suggestions derived from this bank's actual contact reachability, outreach
+        warmth, and open signals — not a finished judgment. Review every field and adjust before saving; nothing here
+        is fabricated, but it's also not a substitute for your read on the account.
+    </div>
+</div>
+{% endif %}
+
+<form method="post">
+<div class="section-grid">
+
+    <div class="card">
+        <div class="card-header"><h2>Dynamic Score inputs</h2></div>
+        <div class="card-body">
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Signal strength (0–100)</label>
+                    <input type="number" step="0.1" min="0" max="100" name="signal_strength" value="{{ inputs.signal_strength }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Regulatory pressure (0–100)</label>
+                    <input type="number" step="0.1" min="0" max="100" name="regulatory_pressure" value="{{ inputs.regulatory_pressure }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" name="regulatory_mandatory" id="regulatory_mandatory" style="width:auto;" {% if inputs.regulatory_mandatory %}checked{% endif %}>
+                    <label for="regulatory_mandatory" style="margin:0; font-size:13px;">Regulatory driver is mandatory (raises its weight)</label>
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Persona reachability (0–100)</label>
+                    <input type="number" step="0.1" min="0" max="100" name="persona_reachability" value="{{ inputs.persona_reachability }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <div style="font-size:11px; color:#94a3b8; margin-top:4px;">Suggested from % of loaded contacts with an email or phone on file.</div>
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Relationship warmth (0–100)</label>
+                    <input type="number" step="0.1" min="0" max="100" name="relationship_warmth" value="{{ inputs.relationship_warmth }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <div style="font-size:11px; color:#94a3b8; margin-top:4px;">Suggested from replied/accepted/meeting-booked outreach channels logged for this bank.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h2>Effective Opportunity inputs</h2></div>
+        <div class="card-body">
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">ICS — Intelligence Confidence Score (0–100)</label>
+                    <input type="number" step="0.1" min="0" max="100" name="ics" value="{{ inputs.ics }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <div style="font-size:11px; color:#94a3b8; margin-top:4px;">ICS &lt; 40 blocks HOT regardless of score. ICS &lt; 60 requires reasoning expansion.</div>
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Stage</label>
+                    <select name="stage" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        {% for s in stages %}<option value="{{ s }}" {% if inputs.stage == s %}selected{% endif %}>{{ s|title }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Budget status</label>
+                    <select name="budget_status" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        {% for b in budget_statuses %}<option value="{{ b }}" {% if inputs.budget_status == b %}selected{% endif %}>{{ b|title }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Incumbent entrenchment (0–100, 0 = no incumbent)</label>
+                    <input type="number" step="0.1" min="0" max="100" name="entrenchment_score" value="{{ inputs.entrenchment_score }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Risk exposure (0–500, 0 = no known risk)</label>
+                    <input type="number" step="1" min="0" max="500" name="risk_exposure" value="{{ inputs.risk_exposure }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Buying window</label>
+                    <select name="window_state" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        {% for w in window_states %}<option value="{{ w }}" {% if inputs.window_state == w %}selected{% endif %}>{{ w|title if w else 'Not engaged / unknown' }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="card">
+    <div class="card-header"><h2>Decision Score inputs</h2></div>
+    <div class="card-body">
+        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Strategic readiness (0–100)</label>
+                <input type="number" step="0.1" min="0" max="100" name="strategic_readiness" value="{{ inputs.strategic_readiness }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Capital cost (relative effort/cost to pursue, &gt; 0)</label>
+                <input type="number" step="0.1" min="0.1" name="capital_cost" value="{{ inputs.capital_cost }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; gap:10px;">
+            <button type="submit" style="padding:10px 24px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">Calculate &amp; save score</button>
+            <a href="/bank/{{ org.id }}" style="padding:10px 24px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+        </div>
+    </div>
+</div>
+</form>
+
+{% if acc and acc.scored_at %}
+<div class="card">
+    <div class="card-header"><h2>Current score</h2></div>
+    <div class="card-body">
+        <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:center;">
+            <span class="badge {% if acc.priority == 'HOT' %}badge-green{% elif acc.priority == 'WARM' %}badge-amber{% else %}badge-tier3{% endif %}" style="font-size:14px; padding:6px 14px;">{{ acc.priority }}</span>
+            <div><div class="s-num">{{ '%.1f'|format(acc.effective_opportunity or 0) }}</div><div class="s-label">Effective Opportunity</div></div>
+            <div><div class="s-num">{{ '%.2f'|format(acc.decision_score or 0) }}</div><div class="s-label">Decision Score</div></div>
+            <div style="color:#94a3b8; font-size:12px;">Last scored {{ acc.scored_at.strftime('%d %b %Y, %H:%M') }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if history %}
+<div class="card">
+    <div class="card-header"><h2>Score history</h2></div>
+    <div class="card-body">
+        <table>
+            <tr><th>Date</th><th>Total</th><th>Tier</th><th>Signal</th><th>Regulatory</th><th>Reachability</th><th>Relationship</th><th>Notes</th></tr>
+            {% for h in history %}
+            <tr>
+                <td>{{ h.score_date.strftime('%d %b %Y') if h.score_date else '' }}</td>
+                <td>{{ h.total_score }}</td>
+                <td><span class="badge {% if h.tier == 'HOT' %}badge-green{% elif h.tier == 'WARM' %}badge-amber{% else %}badge-tier3{% endif %}">{{ h.tier }}</span></td>
+                <td>{{ h.signal_score }}</td>
+                <td>{{ h.regulatory_score }}</td>
+                <td>{{ h.reachability_score }}</td>
+                <td>{{ h.relationship_score }}</td>
+                <td style="font-size:12px; color:#64748b;">{{ h.notes or '' }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

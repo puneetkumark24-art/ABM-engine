@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Add Bank{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Add a New Bank / Organization</h1>
+    <p>Creates the account so it shows up on the dashboard like every other bank — you can then upload
+    its contact list or intelligence right after. <a href="/" class="link">Back to dashboard &rarr;</a></p>
+</div>
+
+{% if error %}
+<div class="card" style="border-left:3px solid #dc2626;">
+    <div class="card-body" style="color:#991b1b; font-size:13px;">{{ error }}</div>
+</div>
+{% endif %}
+
+<form method="post">
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:640px;">
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Bank / organization name</label>
+                <input type="text" name="canonical_name" required value="{{ form.canonical_name or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. Bank Albilad">
+                <div style="font-size:11px; color:#94a3b8; margin-top:4px;">If a bank with this name already exists, you'll be taken straight to its page instead of creating a duplicate.</div>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Arabic name (optional)</label>
+                <input type="text" name="name_ar" value="{{ form.name_ar or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Country</label>
+                <input type="text" name="country" value="{{ form.country or 'Saudi Arabia' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Website (optional)</label>
+                <input type="text" name="website" value="{{ form.website or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="https://...">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Type (pick one or more)</label>
+                <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                    {% for value, label in type_tag_options %}
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; cursor:pointer;">
+                        <input type="checkbox" name="type_tags" value="{{ value }}" {% if value == 'commercial_bank' %}checked{% endif %}>
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:6px;">Defaults to Commercial Bank. Picking Vendor/Subsidiary/Fintech/Consulting/Regulator/Association instead moves it into the Ecosystem list on the homepage rather than Target Banks.</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; gap:10px;">
+            <button type="submit" style="padding:10px 24px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">Create</button>
+            <a href="/" style="padding:10px 24px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

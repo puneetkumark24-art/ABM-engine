@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Connection Map — {{ org.canonical_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ org.canonical_name }} — Connection Map</h1>
+    <p><a href="/bank/{{ org.id }}" class="link">&larr; Back to {{ org.canonical_name }}</a></p>
+</div>
+
+{% if document_candidates %}
+<div class="card" style="border-left:3px solid #d97706;">
+    <div class="card-header"><h2>Detected from documents — not yet confirmed</h2></div>
+    <div class="card-body">
+        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Rule-based extraction from PDFs/images
+        uploaded for this bank flagged these as possible connections. One click adds a real, confirmed entry
+        to the map below — nothing here is added automatically.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            {% for e in document_candidates %}
+            <a href="/bank/{{ org.id }}/vendor/new?vendor_name={{ e.name|urlencode }}&relationship_type={{ e.relationship_type|urlencode }}{% if e.context %}&context={{ e.context|urlencode }}{% endif %}"
+               class="badge badge-amber" style="text-decoration:none; cursor:pointer;"
+               title="From {{ e.source_filename }}{% if e.context %}: {{ e.context }}{% endif %}">
+                + {{ e.name }} — add as {{ (e.relationship_type or 'vendor')|replace('_',' ') }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if not ecosystem_vendors %}
+<div class="card"><div class="card-body">
+    <p style="color:#64748b; font-size:13px;">No vendor, subsidiary, regulator, or partner connections loaded for
+    this bank yet. <a href="/bank/{{ org.id }}/vendor/new" class="link">Add one manually</a> or
+    <a href="/uploads/new?org_id={{ org.id }}" class="link">upload a vendor/subsidiary list</a> — this map builds
+    itself automatically from whatever's connected.</p>
+</div></div>
+{% else %}
+
+<div class="stats-grid">
+    <div class="stat-card"><div class="number">{{ ecosystem_vendors|length }}</div><div class="label">Total Connections</div></div>
+    <div class="stat-card"><div class="number">{{ entry_points|length }}</div><div class="label">Entry Points (Decimal has contacts)</div></div>
+    <div class="stat-card"><div class="number">{{ cross_reach_count }}</div><div class="label">Also Serve Other Target Banks</div></div>
+</div>
+
+{% if entry_points %}
+<div class="card" style="border-left:3px solid #16a34a;">
+    <div class="card-header"><h2>Fastest paths in</h2></div>
+    <div class="card-body">
+        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Decimal already has contacts at these connected
+        organizations — each one is a potential warm introduction into {{ org.canonical_name }}, rather than a cold approach.</p>
+        {% for v in entry_points %}
+        <div class="intel-item">
+            <div class="intel-title"><a href="/bank/{{ v.org_id }}" class="link">{{ v.canonical_name }}</a>
+                <span class="badge badge-green">{{ v.contact_count }} contact{{ 's' if v.contact_count != 1 else '' }}</span>
+                <span class="badge badge-blue">{{ (v.relationship_type or '')|replace('_',' ')|title }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header"><h2>Ecosystem map</h2></div>
+    <div class="card-body">
+        <div style="text-align:center;">
+            <div class="cmap-center">{{ org.canonical_name }}</div>
+        </div>
+        <div class="cmap-columns">
+            {% for key, label, items in ordered_groups %}
+            <div class="cmap-col">
+                <div class="cmap-col-header">{{ label }} ({{ items|length }})</div>
+                {% for v in items %}
+                <div class="cmap-card {% if v.contact_count %}cmap-card-entry{% endif %}">
+                    <div class="cmap-card-name"><a href="/bank/{{ v.org_id }}" class="link">{{ v.canonical_name }}</a></div>
+                    <div class="cmap-card-meta">
+                        <span class="badge {% if v.strength == 'Strong' %}badge-green{% elif v.strength == 'Medium' %}badge-amber{% else %}badge-tier3{% endif %}">{{ v.strength or '' }}</span>
+                        {% if v.confidence %}<span style="color:#94a3b8;">{{ (v.confidence*100)|int }}% confidence</span>{% endif %}
+                    </div>
+                    {% if v.contact_count %}
+                    <div class="cmap-card-meta" style="color:#16a34a; font-weight:600;">&#9679; {{ v.contact_count }} contact{{ 's' if v.contact_count != 1 else '' }} — entry point</div>
+                    {% endif %}
+                    {% if v.context %}<div class="cmap-card-meta">{{ v.context }}</div>{% endif %}
+                    {% if cross_connections.get(v.org_id) %}
+                    <div class="cmap-card-cross">
+                        Also connects to: {% for b in cross_connections[v.org_id] %}<a href="/bank/{{ b.org_id }}" class="link">{{ b.canonical_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<p style="color:#94a3b8; font-size:12px; margin-top:16px;">
+    Auto-generated from the vendor/subsidiary/regulator connections loaded for this bank — add or edit connections
+    from the Ecosystem section on the bank's main page and this map updates automatically.
+</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Intelligence Dashboard</h1>
+    <p>Decimal Banking Relationship Intelligence Platform — Live Data</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><div class="number">{{ stats.organizations }}</div><div class="label">Organizations</div></div>
+    <div class="stat-card"><div class="number">{{ stats.persons }}</div><div class="label">Persons</div></div>
+    <div class="stat-card"><div class="number">{{ stats.relationships_oo }}</div><div class="label">Org Relationships</div></div>
+    <div class="stat-card"><div class="number">{{ stats.buying_committees }}</div><div class="label">Committee Members</div></div>
+    <div class="stat-card"><div class="number">{{ stats.initiatives }}</div><div class="label">Initiatives</div></div>
+    <div class="stat-card"><div class="number">{{ stats.intel_observations }}</div><div class="label">Intel Observations</div></div>
+    <div class="stat-card"><div class="number">{{ stats.products }}</div><div class="label">Products</div></div>
+    <div class="stat-card"><div class="number">{{ stats.opportunities }}</div><div class="label">Opportunities</div></div>
+</div>
+
+<form class="search-bar" method="get" action="/">
+    <input type="text" name="q" placeholder="Search banks, vendors, subsidiaries..." value="{{ search }}">
+    <button type="submit" style="padding:8px 20px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">Search</button>
+    {% if search %}<a href="/" style="padding:8px 16px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Clear</a>{% endif %}
+</form>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Target Banks — Intelligence Coverage</h2>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span class="badge badge-blue">{{ banks|length }}</span>
+            <a href="/uploads/new?import_kind=ecosystem" style="padding:6px 14px; border:none; border-radius:6px; background:#fff; border:1px solid #1B3A5C; color:#1B3A5C; text-decoration:none; font-size:12px;">&#8593; Upload multi-bank vendor file</a>
+            <a href="/organizations/new" style="padding:6px 14px; border:none; border-radius:6px; background:#1B3A5C; color:#fff; text-decoration:none; font-size:12px;">+ Add bank</a>
+        </div>
+    </div>
+    {% for bank in banks %}
+    <a href="/bank/{{ bank.id }}" style="text-decoration:none; color:inherit;">
+    <div class="bank-card">
+        <div>
+            <div class="bank-name">
+                {{ bank.canonical_name }}
+                <span class="bank-name-ar">{{ bank.name_ar or '' }}</span>
+                {% if bank.decimal_priority == 'tier_1' %}<span class="badge badge-tier1">TIER 1</span>
+                {% elif bank.decimal_priority == 'tier_2' %}<span class="badge badge-tier2">TIER 2</span>
+                {% else %}<span class="badge badge-tier3">TIER 3</span>{% endif %}
+            </div>
+            <div class="bank-meta">
+                <span>{{ bank.country or "" }}</span>
+            </div>
+        </div>
+        <div class="bank-stats">
+            <div><div class="s-num">{{ bank.person_count }}</div><div class="s-label">Persons</div></div>
+            <div><div class="s-num">{{ bank.indian_count }}</div><div class="s-label">Indian</div></div>
+            <div><div class="s-num">{{ bank.initiative_count }}</div><div class="s-label">Initiatives</div></div>
+        </div>
+    </div>
+    </a>
+    {% else %}
+    <div style="padding:20px; color:#94a3b8; font-size:13px;">{% if search %}No banks match "{{ search }}".{% else %}No banks loaded yet.{% endif %}</div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Vendors, Subsidiaries &amp; Ecosystem Partners</h2>
+        <span class="badge badge-purple">{{ ecosystem_orgs|length }}</span>
+    </div>
+    {% for e in ecosystem_orgs %}
+    <a href="/bank/{{ e.id }}" style="text-decoration:none; color:inherit;">
+    <div class="bank-card">
+        <div>
+            <div class="bank-name">
+                {{ e.canonical_name }}
+                {% for t in e.type_tags %}<span class="badge badge-purple" style="margin-left:4px;">{{ t|replace('_',' ')|title }}</span>{% endfor %}
+            </div>
+        </div>
+        <div class="bank-stats">
+            <div><div class="s-num">{{ e.contact_count }}</div><div class="s-label">Contacts</div></div>
+            <div><div class="s-num">{{ e.connected_bank_count }}</div><div class="s-label">Banks Connected</div></div>
+        </div>
+    </div>
+    </a>
+    {% else %}
+    <div style="padding:20px; color:#94a3b8; font-size:13px;">{% if search %}No vendors/subsidiaries match "{{ search }}".{% else %}None loaded yet — these come in via the ecosystem ETL (e.g. import_ecosystem.py).{% endif %}</div>
+    {% endfor %}
+</div>
+{% endblock %}

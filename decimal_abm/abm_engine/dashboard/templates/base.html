@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}ABM{% endblock %} — Decimal Technologies</title>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#232735;--border:#2d3245;--text:#e4e6f0;--text-dim:#8b8fa3;--accent:#4f8cff;--accent-dim:#2a5bbf;--green:#34d399;--green-bg:rgba(52,211,153,.12);--red:#f87171;--red-bg:rgba(248,113,113,.12);--yellow:#fbbf24;--yellow-bg:rgba(251,191,36,.12);--orange:#fb923c}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:var(--text)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:24px;height:56px;position:sticky;top:0;z-index:100;overflow-x:auto}
+.topnav .logo{font-weight:700;font-size:15px;color:var(--accent);letter-spacing:.5px;white-space:nowrap}.topnav .logo span{color:var(--text-dim);font-weight:400}
+.topnav a.nl{color:var(--text-dim);font-size:13px;font-weight:500;padding:16px 0;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.topnav a.nl:hover,.topnav a.nl.active{color:var(--text);border-bottom-color:var(--accent);text-decoration:none}
+.topnav .badge{background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px}
+.container{max-width:1200px;margin:0 auto;padding:28px 24px}.page-header{margin-bottom:24px}.page-header h1{font-size:22px;font-weight:700}.page-header p{color:var(--text-dim);font-size:13px;margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}.card h3{font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;text-align:center}.stat-card .num{font-size:32px;font-weight:700}.stat-card .label{font-size:12px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.stat-card.hot .num{color:var(--red)}.stat-card.warm .num{color:var(--yellow)}.stat-card.cold .num{color:var(--accent)}.stat-card.total .num{color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:10px 12px;color:var(--text-dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);font-weight:600}td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}tr:hover td{background:rgba(79,140,255,.04)}
+.tier{font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;display:inline-block}.tier.HOT{background:var(--red-bg);color:var(--red)}.tier.WARM{background:var(--yellow-bg);color:var(--yellow)}.tier.COLD{background:rgba(79,140,255,.12);color:var(--accent)}
+.rtype{font-size:11px;padding:3px 8px;border-radius:4px;display:inline-block;background:var(--surface2);color:var(--text-dim)}.rtype.target{background:rgba(79,140,255,.12);color:var(--accent)}.rtype.vendor{background:var(--yellow-bg);color:var(--yellow)}.rtype.subsidiary{background:var(--green-bg);color:var(--green)}.rtype.connector{background:rgba(251,146,60,.12);color:var(--orange)}.rtype.champion{background:var(--red-bg);color:var(--red)}
+.status{font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;display:inline-block}.status.pending,.status.draft{background:var(--yellow-bg);color:var(--yellow)}.status.approved{background:var(--green-bg);color:var(--green)}.status.rejected{background:var(--red-bg);color:var(--red)}.status.sent{background:rgba(79,140,255,.12);color:var(--accent)}.status.send_failed,.status.bounced{background:var(--red-bg);color:var(--red)}.status.cancelled,.status.skipped{background:var(--surface2);color:var(--text-dim)}.status.opened{background:rgba(79,140,255,.12);color:var(--accent)}.status.replied{background:var(--green-bg);color:var(--green)}
+.btn{padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:4px}.btn-approve{background:var(--green);color:#000}.btn-approve:hover{background:#2cc48a}.btn-reject{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.3)}.btn-reject:hover{background:rgba(248,113,113,.2)}.btn-send{background:var(--accent);color:#fff}.btn-send:hover{background:var(--accent-dim)}.btn-sm{padding:4px 10px;font-size:11px}.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}.filters input,.filters select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-size:13px;outline:none}.filters input:focus,.filters select:focus{border-color:var(--accent)}.filters input{min-width:200px}
+.draft-body{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin:10px 0}.draft-subject{font-weight:600;color:var(--text);margin-bottom:4px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.detail-grid .field-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}.detail-grid .field-value{font-size:14px}
+.signal-item{padding:14px 0;border-bottom:1px solid var(--border)}.signal-item:last-child{border-bottom:none}.signal-source{font-size:11px;color:var(--accent);text-transform:uppercase;font-weight:600;letter-spacing:.5px}.signal-title{font-size:14px;font-weight:600;margin:4px 0}.signal-summary{font-size:13px;color:var(--text-dim);line-height:1.5}.signal-time{font-size:11px;color:var(--text-dim);margin-top:4px}
+.empty{text-align:center;padding:48px 20px;color:var(--text-dim)}.empty h3{font-size:16px;color:var(--text);margin-bottom:8px}.empty p{font-size:13px}
+.score-bar{width:60px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}.score-fill{height:100%;border-radius:3px}
+.warn-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--red-bg);color:var(--red);font-weight:600}
+@media(max-width:768px){.stats-row{grid-template-columns:repeat(2,1fr)}.detail-grid{grid-template-columns:1fr}.topnav{gap:12px}}
+</style>
+</head>
+<body>
+<nav class="topnav">
+<div class="logo">DECIMAL <span>ABM</span></div>
+<a href="/" class="nl {% if request.path == '/' %}active{% endif %}">Overview</a>
+<a href="/accounts" class="nl {% if '/accounts' in request.path or '/account/' in request.path %}active{% endif %}">Accounts</a>
+<a href="/drafts" class="nl {% if '/drafts' in request.path %}active{% endif %}">Drafts {% if pending_count %}<span class="badge">{{ pending_count }}</span>{% endif %}</a>
+<a href="/contacts" class="nl {% if '/contacts' in request.path and '/account' not in request.path %}active{% endif %}">Contacts</a>
+<a href="/templates" class="nl {% if '/templates' in request.path %}active{% endif %}">Templates</a>
+<a href="/intelligence" class="nl {% if '/intelligence' in request.path %}active{% endif %}">Intelligence</a>
+<a href="/audit" class="nl {% if '/audit' in request.path %}active{% endif %}">Audit</a>
+<a href="/logout" class="nl" style="margin-left:auto;color:var(--red);">Logout</a>
+</nav>
+<div class="container">{% block content %}{% endblock %}</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

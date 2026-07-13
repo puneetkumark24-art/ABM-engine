@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Edit — {{ p.full_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ p.full_name }}</h1>
+    <p>{{ p.current_title or '' }}{% if org %} — <a href="/bank/{{ org.id }}" class="link">{{ org.canonical_name }}</a>{% endif %}</p>
+</div>
+
+<form method="post" action="/person/{{ p.id }}/edit">
+<input type="hidden" name="next" value="{{ next_url }}">
+
+<div class="card">
+    <div class="card-header"><h2>Contact details</h2></div>
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:560px;">
+            <div><label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Tier</label>
+                <div style="font-size:14px; padding:6px 0;">{{ p.priority_tier or '—' }} <span style="color:#94a3b8;">(from source file, not editable here)</span></div></div>
+
+            <div><label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Email</label>
+                <input type="email" name="primary_email" value="{{ p.primary_email or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="name@bank.com"></div>
+
+            <div><label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Phone</label>
+                <input type="text" name="phone" value="{{ p.phone or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="+966 5X XXX XXXX"></div>
+
+            <div><label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">LinkedIn URL</label>
+                <input type="url" name="linkedin_url" value="{{ p.linkedin_url or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="https://linkedin.com/in/..."></div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h2>Overall next step</h2></div>
+    <div class="card-body">
+        <input type="text" name="next_step" value="{{ p.next_step or '' }}" style="width:100%; max-width:560px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="The single most important next action across all channels">
+    </div>
+</div>
+
+<div class="section-grid">
+{% for ch in channel_order %}
+{% set row = channels.get(ch) %}
+<div class="card">
+    <div class="card-header">
+        <h2>{{ channel_labels[ch] }}</h2>
+        {% if row and row.updated_at %}<span class="badge badge-blue">Updated {{ row.updated_at.strftime('%b %d, %Y') }}{% if row.updated_by %} by {{ row.updated_by }}{% endif %}</span>{% endif %}
+    </div>
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Stage</label>
+                <input type="text" name="{{ ch }}_stage" list="{{ ch }}-stage-options" value="{{ row.stage if row else '' }}"
+                       style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;"
+                       placeholder="Type any stage — suggestions below, or write your own">
+                <datalist id="{{ ch }}-stage-options">
+                    {% for s in stage_suggestions[ch] %}<option value="{{ s }}">{% endfor %}
+                </datalist>
+            </div>
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Notes / their response</label>
+                <textarea name="{{ ch }}_notes" rows="3" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit;">{{ row.notes if row else '' }}</textarea>
+            </div>
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Next step on {{ channel_labels[ch] }}</label>
+                <input type="text" name="{{ ch }}_next_step" value="{{ row.next_step if row else '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="What to do next on this channel specifically">
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Your name</label>
+                <input type="text" name="updated_by" value="{{ p.outreach_updated_by or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="Who's logging this update — applies to whichever channels you changed">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="submit" style="padding:10px 20px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">Save</button>
+                <a href="{{ next_url }}" style="padding:10px 20px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+                <a href="/person/{{ p.id }}/delete?next={{ next_url|urlencode }}" style="padding:10px 20px; border-radius:8px; background:#fff; border:1px solid #dc2626; color:#dc2626; text-decoration:none; font-size:14px;">Delete contact</a>
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

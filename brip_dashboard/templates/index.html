@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Intelligence Dashboard</h1>
+    <p>Decimal Banking Relationship Intelligence Platform — Live Data</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><div class="number">{{ stats.organizations }}</div><div class="label">Organizations</div></div>
+    <div class="stat-card"><div class="number">{{ stats.persons }}</div><div class="label">Persons</div></div>
+    <div class="stat-card"><div class="number">{{ stats.relationships_oo }}</div><div class="label">Org Relationships</div></div>
+    <div class="stat-card"><div class="number">{{ stats.buying_committees }}</div><div class="label">Committee Members</div></div>
+    <div class="stat-card"><div class="number">{{ stats.initiatives }}</div><div class="label">Initiatives</div></div>
+    <div class="stat-card"><div class="number">{{ stats.intel_observations }}</div><div class="label">Intel Observations</div></div>
+    <div class="stat-card"><div class="number">{{ stats.products }}</div><div class="label">Products</div></div>
+    <div class="stat-card"><div class="number">{{ stats.opportunities }}</div><div class="label">Opportunities</div></div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Target Banks — Intelligence Coverage</h2>
+    </div>
+    {% for bank in banks %}
+    <a href="/bank/{{ bank.short_name }}" style="text-decoration:none; color:inherit;">
+    <div class="bank-card">
+        <div>
+            <div class="bank-name">
+                {{ bank.canonical_name }}
+                <span class="bank-name-ar">{{ bank.name_ar or '' }}</span>
+                {% if bank.decimal_priority == 'tier_1' %}<span class="badge badge-tier1">TIER 1</span>
+                {% elif bank.decimal_priority == 'tier_2' %}<span class="badge badge-tier2">TIER 2</span>
+                {% else %}<span class="badge badge-tier3">TIER 3</span>{% endif %}
+            </div>
+            <div class="bank-meta">
+                <span>{{ bank.short_name }}</span>
+            </div>
+        </div>
+        <div class="bank-stats">
+            <div><div class="s-num">{{ bank.person_count }}</div><div class="s-label">Persons</div></div>
+            <div><div class="s-num">{{ bank.initiative_count }}</div><div class="s-label">Initiatives</div></div>
+            <div><div class="s-num">{{ bank.intel_count }}</div><div class="s-label">Intel</div></div>
+        </div>
+    </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

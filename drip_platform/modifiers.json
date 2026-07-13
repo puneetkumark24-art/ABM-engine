@@ -1,0 +1,39 @@
+{
+  "_source": "Business Logic Bible — Build Artifact 1: Scoring Modifier Lookup Table",
+  "_note": "Seed content for Rule_Registry (RULEREG-RECORD-001). Read by scoring.py — not hardcoded.",
+  "dynamic_score_weights": {
+    "signal_strength": 0.35,
+    "regulatory_pressure": 0.30,
+    "persona_reachability": 0.20,
+    "relationship_warmth": 0.15,
+    "regulatory_pressure_if_mandatory": 0.40
+  },
+  "stage_bonus": {
+    "EVALUATING": 1.3, "SHORTLISTING": 1.3,
+    "DEFINING": 1.1,
+    "EXPLORING": 1.0, "AWARE": 1.0,
+    "UNAWARE": 0.9,
+    "PROCUREMENT": 1.2, "NEGOTIATION": 1.2,
+    "CLOSED": 0.0
+  },
+  "budget_modifier": {
+    "ALLOCATED": 1.4, "APPROVED": 1.2, "SEEKING": 1.0, "UNKNOWN": 0.8, "UNFUNDED": 0.5
+  },
+  "window_multiplier": {
+    "OPEN": 1.5, "CLOSING": 1.2, "OPENING": 0.5, "CLOSED": 0.1, "CLOSED_AGAIN": 0.0
+  },
+  "ics_action_floor": 40,
+  "ics_review_scrutiny_gate": 60,
+  "risk_modifier_floor": 0.2,
+  "risk_exposure_divisor": 500,
+  "entrenchment_fortress_score": 80,
+  "entrenchment_fortress_modifier": 0.20,
+  "initiative_criticality_dynamic_bonus": {
+    "REGULATORY_MANDATORY": 0,
+    "STRATEGIC_MANDATORY": 10,
+    "REVENUE_CRITICAL": 0,
+    "EFFICIENCY_IMPROVEMENT": -5,
+    "NICE_TO_HAVE": -15
+  },
+  "tier_thresholds": {"HOT": 75, "WARM": 50}
+}

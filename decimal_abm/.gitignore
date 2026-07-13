@@ -1,0 +1,23 @@
+# Credentials — NEVER commit
+.env
+*.env
+active_template.json
+
+# Database
+*.db
+backups/
+
+# Logs
+abm_engine/logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp

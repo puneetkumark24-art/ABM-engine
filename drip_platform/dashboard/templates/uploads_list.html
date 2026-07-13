@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Uploads{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Intelligence Uploads</h1>
+    <p>Files uploaded from the dashboard, stored in Postgres. PDFs and images are read immediately on upload —
+    their summary and detected connections show up on the bank's own page. <strong>Pending</strong> here means
+    a different file type that hasn't been read yet — share it with Claude in a chat to have it extracted.</p>
+</div>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <div style="display:flex; gap:8px;">
+        <a href="/uploads" class="badge {% if not status_filter %}badge-blue{% else %}badge-tier3{% endif %}" style="text-decoration:none; padding:6px 14px;">All</a>
+        <a href="/uploads?status=pending" class="badge {% if status_filter == 'pending' %}badge-blue{% else %}badge-amber{% endif %}" style="text-decoration:none; padding:6px 14px;">Pending ({{ pending_count }})</a>
+        <a href="/uploads?status=processed" class="badge {% if status_filter == 'processed' %}badge-blue{% else %}badge-green{% endif %}" style="text-decoration:none; padding:6px 14px;">Processed</a>
+        <a href="/uploads?status=failed" class="badge {% if status_filter == 'failed' %}badge-blue{% else %}badge-red{% endif %}" style="text-decoration:none; padding:6px 14px;">Failed</a>
+    </div>
+    <a href="/uploads/new" style="padding:10px 20px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px; text-decoration:none;">+ Upload file</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% for u in uploads %}
+        <div class="intel-item">
+            <div class="intel-title">
+                {{ u.filename }}
+                {% if u.org_id %}<a href="/bank/{{ u.org_id }}" class="link" style="font-size:12px;">{{ u.org_name }}</a>{% elif u.org_name %}<span class="badge badge-tier3">{{ u.org_name }}</span>{% endif %}
+                <span class="badge {% if u.status == 'processed' %}badge-green{% elif u.status == 'failed' %}badge-red{% elif u.status == 'processing' %}badge-amber{% else %}badge-blue{% endif %}">{{ u.status_label }}</span>
+                <a href="/uploads/{{ u.id }}/download" class="link" style="font-size:12px; margin-left:6px;">Download</a>
+            </div>
+            <div class="intel-meta">
+                {{ (u.file_size / 1024)|round(1) if u.file_size else 0 }} KB — uploaded {{ u.created_at.strftime('%d %b %Y, %H:%M') if u.created_at else '' }}{% if u.uploaded_by %} by {{ u.uploaded_by }}{% endif %}
+                {% if u.processed_at %} — processed {{ u.processed_at.strftime('%d %b %Y') }}{% endif %}
+            </div>
+            {% if u.notes %}<div class="intel-body">Note: {{ u.notes }}</div>{% endif %}
+            {% if u.processing_notes %}<div class="intel-body">Processing: {{ u.processing_notes }}</div>{% endif %}
+
+            {% if u.is_contact_file and u.status == 'pending' %}
+            <span class="badge badge-purple" style="margin-right:6px;">{% if u.import_kind == 'ecosystem' %}Vendors / subsidiaries{% else %}Contacts{% endif %}</span>
+            <form method="post" action="/uploads/{{ u.id }}/process-contacts" style="margin-top:8px; display:inline;">
+                <button type="submit" style="padding:8px 14px; border:none; border-radius:6px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:12px;">
+                    {% if u.import_kind == 'ecosystem' %}&#9889; Process now (vendors/subsidiaries — instant, no chat needed){% else %}&#9889; Process now (contact list — instant, no chat needed){% endif %}
+                </button>
+            </form>
+            {% endif %}
+
+            {% if u.status != 'processed' %}
+            <details style="margin-top:8px;">
+                <summary style="cursor:pointer; font-size:12px; color:#2563eb;">Update status</summary>
+                <form method="post" action="/uploads/{{ u.id }}/status" style="margin-top:8px; display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;">
+                    <input type="text" name="processing_notes" placeholder="What was extracted / why it failed" style="flex:1; min-width:220px; padding:8px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px;">
+                    <button type="submit" name="status" value="processed" style="padding:8px 14px; border:none; border-radius:6px; background:#16a34a; color:#fff; cursor:pointer; font-size:12px;">Mark processed</button>
+                    <button type="submit" name="status" value="failed" style="padding:8px 14px; border:none; border-radius:6px; background:#dc2626; color:#fff; cursor:pointer; font-size:12px;">Mark failed</button>
+                    <button type="submit" name="status" value="processing" style="padding:8px 14px; border:none; border-radius:6px; background:#d97706; color:#fff; cursor:pointer; font-size:12px;">Mark in progress</button>
+                </form>
+            </details>
+            {% endif %}
+        </div>
+        {% else %}
+        <p style="color:#94a3b8; font-size:13px;">No uploads yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

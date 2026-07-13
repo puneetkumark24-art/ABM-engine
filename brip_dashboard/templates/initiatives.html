@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Initiatives{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Initiative Tracker</h1><p>All active initiatives ranked by Decimal relevance</p></div>
+<div class="card"><div class="card-header"><h2>{{ initiatives|length }} initiatives tracked</h2></div><div class="card-body">
+<table><tr><th>Bank</th><th>Initiative</th><th>Type</th><th>Status</th><th>Decimal Relevance</th><th>Products</th></tr>
+{% for i in initiatives %}<tr>
+<td><a href="/bank/{{ i.short_name }}" class="link"><strong>{{ i.bank_name }}</strong></a></td>
+<td>{{ i.name }}</td>
+<td><span class="badge badge-blue">{{ i.initiative_type|replace('_',' ')|title }}</span></td>
+<td><span class="badge {% if i.status == 'in_progress' %}badge-green{% else %}badge-amber{% endif %}">{{ i.status|replace('_',' ')|title }}</span></td>
+<td><div class="relevance-bar"><div class="relevance-bar-fill" style="width:{{ (i.decimal_relevance * 100)|int }}%;"></div></div> <strong>{{ '%.0f'|format(i.decimal_relevance * 100) }}%</strong></td>
+<td style="font-size:12px;">{{ (i.relevant_products or [])|join(', ') }}</td>
+</tr>{% endfor %}
+</table></div></div>
+{% endblock %}

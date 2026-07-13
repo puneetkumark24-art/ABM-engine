@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Add Contact{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Add a Contact — {{ org.canonical_name }}</h1>
+    <p><a href="/bank/{{ org.id }}" class="link">&larr; Back to {{ org.canonical_name }}</a></p>
+</div>
+
+{% if error %}
+<div class="card" style="border-left:3px solid #dc2626;">
+    <div class="card-body" style="color:#991b1b; font-size:13px;">{{ error }}</div>
+</div>
+{% endif %}
+
+<form method="post" action="/bank/{{ org.id }}/person/new">
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:640px;">
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Full name</label>
+                <input type="text" name="full_name" required value="{{ form.full_name or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Title</label>
+                <input type="text" name="current_title" value="{{ form.current_title or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+
+            <div style="display:flex; gap:14px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Email</label>
+                    <input type="email" name="primary_email" value="{{ form.primary_email or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Phone</label>
+                    <input type="text" name="phone" value="{{ form.phone or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">LinkedIn URL</label>
+                <input type="url" name="linkedin_url" value="{{ form.linkedin_url or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="https://linkedin.com/in/...">
+            </div>
+
+            <div style="display:flex; gap:14px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Tier</label>
+                    <select name="priority_tier" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        <option value="">—</option>
+                        {% for t in tiers %}<option value="{{ t }}" {% if form.priority_tier == t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Seniority</label>
+                    <select name="seniority_level" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                        <option value="">—</option>
+                        {% for s in seniorities %}<option value="{{ s }}" {% if form.seniority_level == s %}selected{% endif %}>{{ s|replace('_',' ')|title }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Country</label>
+                <input type="text" name="country" value="{{ form.country or '' }}" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+            </div>
+
+            <div style="display:flex; gap:20px;">
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" name="is_decision_maker">Decision maker</label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" name="is_connector">Connector</label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" name="is_indian_origin">Indian-origin</label>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Notes (optional)</label>
+                <textarea name="background_notes" rows="3" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit;">{{ form.background_notes or '' }}</textarea>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; gap:10px;">
+            <button type="submit" style="padding:10px 24px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">Add contact</button>
+            <a href="/bank/{{ org.id }}" style="padding:10px 24px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

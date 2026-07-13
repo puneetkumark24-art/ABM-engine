@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{% if filetype == 'pdf' %}Upload PDF{% elif filetype == 'image' %}Upload Image{% elif preselect_import_kind == 'ecosystem' and not preselect_org_id %}Upload Multi-Bank Vendor File{% else %}Upload Intelligence{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    {% if filetype == 'pdf' %}
+    <h1>Upload PDF — Connection Source</h1>
+    <p>Read immediately — as soon as you upload, the text is extracted and scanned for organization names
+    (vendors, subsidiaries, regulators), and you'll land back on this bank's page with a summary and one-click
+    "add to connection map" suggestions. Rule-based, not AI, so review what it finds before confirming.
+    <a href="/uploads" class="link">View all uploads &rarr;</a></p>
+    {% elif filetype == 'image' %}
+    <h1>Upload Image — Connection Source</h1>
+    <p>Read immediately via OCR (org charts, flow diagrams, screenshots — anything showing how a bank connects to
+    vendors/subsidiaries/regulators) — you'll land back on this bank's page with a summary and one-click "add to
+    connection map" suggestions. Needs Tesseract OCR installed on this machine; if it's missing, the image is
+    still saved and you'll see a note instead of a summary. <a href="/uploads" class="link">View all uploads &rarr;</a></p>
+    {% elif preselect_import_kind == 'ecosystem' and not preselect_org_id %}
+    <h1>Upload Multi-Bank Vendor / Subsidiary File</h1>
+    <p>One file, many banks — each row carries its own bank name, so nothing needs to be pre-selected below.
+    <a href="/uploads" class="link">View all uploads &rarr;</a></p>
+    {% else %}
+    <h1>Upload Intelligence</h1>
+    <p>Upload a dossier, deck, or document for a bank — it's stored in Postgres and queued as "Pending" until it's
+    extracted into the dashboard. <a href="/uploads" class="link">View all uploads &rarr;</a></p>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="card" style="border-left:3px solid #dc2626;">
+    <div class="card-body" style="color:#991b1b; font-size:13px;">{{ error }}</div>
+</div>
+{% endif %}
+
+{% if preselect_import_kind == 'ecosystem' and not preselect_org_id and not filetype %}
+<div class="card" style="border-left:3px solid #1B3A5C;">
+    <div class="card-body" style="font-size:12px; color:#64748b;">
+        Leave "Bank" below unselected — each row in your file should have its own <strong>Bank</strong> (or
+        "Target Bank" / "Serves Bank") column alongside the vendor name. Banks that aren't on the dashboard yet
+        are created automatically, exactly like adding one manually. If a row has no bank column and no bank is
+        selected below, that row is skipped (shown in the processing summary) rather than guessed at.
+    </div>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; flex-direction:column; gap:14px; max-width:640px;">
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Bank (if it's already on the dashboard)</label>
+                <select name="org_id" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <option value="">— Not linked yet / choose below —</option>
+                    {% for o in orgs %}
+                    <option value="{{ o.id }}" {% if preselect_org_id == o.id %}selected{% endif %}>{{ o.canonical_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Or type the bank name (if it's not on the dashboard yet)</label>
+                <input type="text" name="org_name_hint" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="e.g. Riyad Bank">
+                <div style="font-size:11px; color:#94a3b8; margin-top:4px;">This won't create the bank on the dashboard by itself — it's just a label until the file is processed. Leave both bank fields blank for a multi-bank file.</div>
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">File</label>
+                <input type="file" name="file" required {% if filetype == 'pdf' %}accept=".pdf"{% elif filetype == 'image' %}accept="image/*"{% endif %} style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; background:#fff;">
+            </div>
+
+            {% if not filetype %}
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">What kind of file is this? (only matters for .xlsx/.csv — controls what "Process now" does)</label>
+                <div style="display:flex; gap:14px;">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; cursor:pointer;">
+                        <input type="radio" name="import_kind" value="contacts" {% if preselect_import_kind != 'ecosystem' %}checked{% endif %}> Contact list (people)
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; cursor:pointer;">
+                        <input type="radio" name="import_kind" value="ecosystem" {% if preselect_import_kind == 'ecosystem' %}checked{% endif %}> Vendors / subsidiaries list (single or multi-bank)
+                    </label>
+                </div>
+            </div>
+            {% else %}
+            <input type="hidden" name="import_kind" value="contacts">
+            {% endif %}
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Your name</label>
+                <input type="text" name="uploaded_by" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px;" placeholder="Who's uploading this">
+            </div>
+
+            <div>
+                <label style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Notes (optional)</label>
+                <textarea name="notes" rows="3" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit;" placeholder="What is this document, anything worth flagging before it's processed"></textarea>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% if not filetype %}
+<div class="card">
+    <div class="card-body" style="font-size:12px; color:#64748b;">
+        <strong>Contact lists (.xlsx/.csv, same shape as your bank LinkedIn exports):</strong> after uploading,
+        you'll see a "Process now" button on the Uploads page — click it and it's read and added to the dashboard
+        immediately, no chat needed. Each row can carry its own Company column, so one file can cover multiple
+        banks at once.<br><br>
+        <strong>Vendor / subsidiary lists (.xlsx/.csv):</strong> one row per vendor or subsidiary — a name column
+        is required; type, relationship, strength, confidence, context, and <strong>Bank</strong> columns are all
+        optional. Select "Vendors / subsidiaries list" above, then click "Process now" the same way. Include a
+        Bank column per row (and leave the bank fields above blank) to update several banks' vendor/subsidiary
+        connections from one file — banks that don't exist yet are created automatically.<br><br>
+        <strong>PDFs and images:</strong> read immediately on upload — text extraction plus rule-based organization-name
+        detection, no chat needed. You'll land back on the bank's page (if one was selected) with a summary and
+        one-click "add to connection map" suggestions under Document Intelligence.<br><br>
+        <strong>Everything else (decks, docs, other formats):</strong> the file is stored and marked
+        <strong>Pending</strong> — share it with Claude in a chat when you're ready to have it read and added to
+        the dashboard, the same way the SNB dossier was processed.
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body">
+        <div style="display:flex; gap:10px;">
+            <button type="submit" style="padding:10px 24px; border:none; border-radius:8px; background:#1B3A5C; color:#fff; cursor:pointer; font-size:14px;">Upload</button>
+            <a href="/uploads" style="padding:10px 24px; border-radius:8px; background:#f1f5f9; color:#475569; text-decoration:none; font-size:14px;">Cancel</a>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}

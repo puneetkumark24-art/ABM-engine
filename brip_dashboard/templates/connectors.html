@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Connectors{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Connector Network</h1><p>External persons who can introduce Decimal to target banks</p></div>
+<div class="card"><div class="card-header"><h2>{{ connectors|length }} connectors identified</h2></div><div class="card-body">
+<table><tr><th>Name</th><th>Title</th><th>Organization</th><th>Email</th><th>Phone</th><th>Status</th></tr>
+{% for c in connectors %}<tr>
+<td><strong>{{ c.full_name }}</strong></td>
+<td>{{ c.current_title }}</td>
+<td><span class="badge badge-blue">{{ c.organization }}</span></td>
+<td style="font-size:12px;">{{ c.primary_email or '' }}</td>
+<td style="font-size:12px;">{{ c.mobile_phone or '' }}</td>
+<td><span class="badge badge-amber">{{ c.decimal_relationship_status }}</span></td>
+</tr>{% endfor %}
+</table></div></div>
+{% endblock %}
