@@ -154,4 +154,10 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
 def start_webhook_server() -> None:
     """Start the webhook receiver. Run alongside the scheduler."""
-    server = HTTPServer
+    server = HTTPServer(("0.0.0.0", PORT), WebhookHandler)
+    logger.info("Webhook server listening on port {}", PORT)
+    logger.info("On laptop, expose with: ngrok http {}", PORT)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logger.info("Webhook server stopped.")

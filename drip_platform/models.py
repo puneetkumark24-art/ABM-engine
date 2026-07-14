@@ -487,4 +487,18 @@ class DocumentUpload(Base):
 
     # Populated immediately on upload for PDFs/images by etl/document_reader.py — rule-based
     # (no AI/API key), so a bank's page and connection map update right away instead of sitting
-    # in a "Pending — share with Claude" queue. extracted_text 
+    # in a "Pending — share with Claude" queue. extracted_text is capped at 20k chars (full text
+    # for anything reasonably sized; long dossiers get truncated rather than blowing up storage).
+    extracted_text = Column(Text)
+    extracted_summary = Column(Text)
+    detected_entities = Column(JSON, default=list)   # [{name, count, relationship_type, context}, ...]
+
+    __table_args__ = (Index("idx_uploads_org", "org_id"), Index("idx_uploads_status", "status"))
+
+
+class Unsubscribe(Base):
+    __tablename__ = "unsubscribes"
+    id = Column(String(36), primary_key=True, default=uid)
+    email = Column(String, unique=True)
+    token = Column(String)
+    unsubscribed_at = Column(DateTime, default=datetime.utcnow)

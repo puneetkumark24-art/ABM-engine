@@ -176,4 +176,23 @@ def main():
         print(f"FAIL: {LIVE_DB} not found — run this from decimal_abm/.")
         sys.exit(1)
 
-    if arg
+    if args.dry_run:
+        tmp_dir = Path(tempfile.mkdtemp(prefix="abm_hygiene_test_"))
+        tmp_db = tmp_dir / "abm_engine.db"
+        shutil.copy2(LIVE_DB, tmp_db)
+        run(tmp_db, apply=False)
+        print(f"\nDry run complete. Live database untouched: {LIVE_DB}")
+        print(f"(temp copy left at {tmp_db} for inspection)")
+    else:
+        backup_dir = REPO_ROOT / "backups"
+        backup_dir.mkdir(exist_ok=True)
+        backup_path = backup_dir / f"pre_hygiene_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
+        shutil.copy2(LIVE_DB, backup_path)
+        print(f"Backup written: {backup_path}")
+        run(LIVE_DB, apply=True)
+        print("\nDone. Live database updated. Backup above is your rollback path if needed.")
+
+
+if __name__ == "__main__":
+    main()
+()

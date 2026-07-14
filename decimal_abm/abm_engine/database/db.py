@@ -1003,4 +1003,33 @@ def get_audit_log(limit=200) -> list[dict]:
 # ─── Unsubscribes ───────────────────────────────────────────────────────────────
 
 def add_unsubscribe(email, token="") -> None:
-    conn = get_
+    conn = get_conn()
+    with conn:
+        conn.execute("""
+            INSERT INTO unsubscribes (email, token) VALUES (?,?)
+            ON CONFLICT(email) DO NOTHING
+        """, (email, token))
+        conn.execute("UPDATE contacts SET do_not_contact=1 WHERE email=?", (email,))
+
+
+def is_unsubscribed(email) -> bool:
+    if not email:
+        return False
+    conn = get_conn()
+    row = conn.execute("SELECT id FROM unsubscribes WHERE email=?", (email,)).fetchone()
+    return row is not None
+
+
+# ─── Backup ─────────────────────────────────────────────────────────────────────
+
+def backup_db() -> str:
+    import sqlite3 as _sqlite3
+    backup_dir = DB_PATH.parent / "backups"
+    backup_dir.mkdir(exist_ok=True)
+    dest = backup_dir / f"abm_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
+    src = _sqlite3.connect(str(DB_PATH))
+    dst = _sqlite3.connect(str(dest))
+    src.backup(dst)
+    dst.close()
+    src.close()
+    return dest.name
