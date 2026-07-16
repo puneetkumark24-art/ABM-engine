@@ -502,3 +502,98 @@ class Unsubscribe(Base):
     email = Column(String, unique=True)
     token = Column(String)
     unsubscribed_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────
+#  SEQUENCE / JOURNEY ENGINE  (Enterprise Blueprint Module 08 —
+#  "the core of subsuming the drip", MASTER_CONSOLIDATION_PLAN §5)
+#
+#  Ports decimal_abm/abm_engine/workflow/ (Phase 1 sequencing) onto
+#  DRIP's ORM Person/Organization model. ADDITIVE ONLY — four new
+#  tables, no change to any existing column. Reproduces the proven
+#  default cadence (5 touches / 3-day gaps) as explicit, editable
+#  data instead of a hardcoded constant, and enforces the same
+#  compliance gates (do_not_contact / consent / replied / active)
+#  plus the account-centric pause rule (ACC-001: one reply pauses
+#  every enrollment at that organization).
+# ─────────────────────────────────────────────────────────────
+class SequenceDefinition(Base):
+    """A named multi-touch cadence. relationship_type=NULL is the default
+    sequence; a non-NULL value lets a specific OrgTypeTag / PersonRelationship
+    type (e.g. 'vendor', 'connector') have its own cadence, exactly as
+    decimal_abm's sequence_for_relationship_type() selected."""
+    __tablename__ = "sequence_definitions"
+    id = Column(String(36), primary_key=True, default=uid)
+    name = Column(String, nullable=False, unique=True)
+    relationship_type = Column(String, nullable=True)   # NULL = default cadence
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    steps = relationship("SequenceStep", back_populates="sequence",
+                         cascade="all, delete-orphan", order_by="SequenceStep.step_number")
+
+
+class SequenceStep(Base):
+    """One touch in a sequence. channel is free-ish: email / linkedin / both /
+    whatsapp / phone. wait_days_after_previous is the cooldown before this step
+    fires relative to the previous step's execution (step 1 fires relative to
+    enrolment)."""
+    __tablename__ = "sequence_steps"
+    id = Column(String(36), primary_key=True, default=uid)
+    sequence_id = Column(String(36), ForeignKey("sequence_definitions.id"), nullable=False)
+    step_number = Column(Integer, nullable=False)         # 1-based
+    channel = Column(String, default="email")
+    wait_days_after_previous = Column(Integer, default=3)
+    template_id = Column(String(36), ForeignKey("templates.id"), nullable=True)
+    is_final = Column(Boolean, default=False)
+    __table_args__ = (
+        UniqueConstraint("sequence_id", "step_number"),
+        Index("idx_seqstep_seq", "sequence_id"),
+    )
+    sequence = relationship("SequenceDefinition", back_populates="steps")
+
+
+class SequenceEnrollment(Base):
+    """A person moving through a sequence. current_step is the last COMPLETED
+    step (0 = enrolled but nothing sent yet); the next step to fire is
+    current_step + 1. org_id is denormalized from the person at enrol time so
+    the account-centric pause (ACC-001) can pause every enrollment at an org in
+    one query without joining through persons."""
+    __tablename__ = "sequence_enrollments"
+    id = Column(String(36), primary_key=True, default=uid)
+    sequence_id = Column(String(36), ForeignKey("sequence_definitions.id"), nullable=False)
+    person_id = Column(String(36), ForeignKey("persons.id"), nullable=False)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=True)
+
+    current_step = Column(Integer, default=0)
+    status = Column(String, default="ACTIVE")     # ACTIVE / PAUSED / COMPLETED / EXITED
+    pause_reason = Column(String)
+
+    enrolled_at = Column(DateTime, default=datetime.utcnow)
+    last_step_at = Column(DateTime)               # when the current_step was executed
+    next_run_at = Column(DateTime)                # computed: when step current_step+1 is due
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("person_id", "sequence_id"),
+        Index("idx_enroll_status", "status"),
+        Index("idx_enroll_org", "org_id"),
+        Index("idx_enroll_person", "person_id"),
+    )
+
+
+class SequenceEnrollmentEvent(Base):
+    """Append-only audit of what happened to an enrollment — enrolled,
+    step_executed, advanced, paused, resumed, completed, exited. Mirrors the
+    universal-activity discipline so a person's sequence history is fully
+    reconstructable (Blueprint Module 08 journey_event)."""
+    __tablename__ = "sequence_enrollment_events"
+    id = Column(String(36), primary_key=True, default=uid)
+    enrollment_id = Column(String(36), ForeignKey("sequence_enrollments.id"), nullable=False)
+    step_number = Column(Integer)
+    event_type = Column(String, nullable=False)   # enrolled/step_executed/advanced/paused/resumed/completed/exited/blocked
+    detail = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (Index("idx_seqevent_enroll", "enrollment_id"),)

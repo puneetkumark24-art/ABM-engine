@@ -6,7 +6,7 @@ Run (prod, Postgres): DATABASE_URL=postgresql+psycopg2://... uvicorn main:app --
 """
 from fastapi import FastAPI
 from database import Base, engine
-from routers import organizations, persons, signals, opportunities
+from routers import organizations, persons, signals, opportunities, sequences, platform_status, platform_modules, engine_e2e, tracking_decision
 
 app = FastAPI(
     title="DRIP — Decimal Relationship Intelligence Platform",
@@ -29,3 +29,8 @@ app.include_router(organizations.router)
 app.include_router(persons.router)
 app.include_router(signals.router)
 app.include_router(opportunities.router)
+app.include_router(sequences.router)
+app.include_router(platform_status.router)
+app.include_router(platform_modules.router)
+app.include_router(engine_e2e.router)
+app.include_router(tracking_decision.router)
