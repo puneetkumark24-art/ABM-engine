@@ -107,4 +107,5 @@ def ingest_webhook(db: Session, events: list[dict]) -> dict:
 
 
 def message_events(db: Session, message_id: str) -> list[dict]:
-    evs = db.query(mx.DeliveryEvent).filter_by(message_id=message_id).orde
+    evs = db.query(mx.DeliveryEvent).filter_by(message_id=message_id).order_by(mx.DeliveryEvent.occurred_at).all()
+    return [{"type": e.event_type, "provider": e.provider, "at": e.occurred_at} for e in evs]

@@ -1,0 +1,5 @@
+# Additional runtime deps for the containerized deployment (on top of requirements.txt)
+redis>=5.0
+gunicorn>=22.0
+# boto3 only needed if ENABLE_SES_TRANSPORT=true (real Amazon SES sending)
+# boto3>=1.34

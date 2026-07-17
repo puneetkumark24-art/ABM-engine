@@ -1,0 +1,28 @@
+# Module Index
+
+- **01 Intelligence Engine** — `02_Intelligence`
+- **02 Signal Detection Engine** — `03_Signal_Detection`
+- **03 Contact & Account Enrichment Engine** — `04_Contact_Enrichment`
+- **04 Contact Intelligence Engine** — `04_Contact_Enrichment`
+- **05 Account Engine** — `05_Account_Management`
+- **06 CRM Engine (HubSpot Replica)** — `06_CRM_Engine`
+- **07 Marketing Automation Engine (Mailchimp Replica)** — `07_Marketing_Automation`
+- **08 Journey Builder Engine** — `07_Marketing_Automation`
+- **09 Campaign Builder Engine** — `07_Marketing_Automation`
+- **10 AI Personalization Engine** — `10_AI_Engine`
+- **11 Email Delivery Engine** — `08_Email_Engine`
+- **12 LinkedIn Automation Engine** — `09_LinkedIn_Engine`
+- **13 Landing Page & Forms Engine** — `07_Marketing_Automation`
+- **14 Asset Library** — `07_Marketing_Automation`
+- **15 Rules Engine** — `13_Rules_Engine`
+- **16 Workflow Engine (n8n-style)** — `11_Workflow_Engine`
+- **17 Analytics Engine** — `12_Analytics`
+- **18 Lead & Account Scoring Engine** — `05_Account_Management`
+- **19 Pipeline Management Engine** — `05_Account_Management`
+- **20 Reporting Engine** — `12_Analytics`
+- **21 Notification Engine** — `14_Admin`
+- **22 Attribution Engine** — `12_Analytics`
+- **23 API Gateway** — `15_API`
+- **24 Integration Layer & Event Bus** — `16_UI`
+- **25 Admin Console & User/Permission Management** — `14_Admin`
+- **26 AI Copilot** — `10_AI_Engine`

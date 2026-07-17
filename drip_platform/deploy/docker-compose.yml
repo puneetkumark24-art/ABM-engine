@@ -1,0 +1,102 @@
+# DRIP enterprise stack — one command to stand up the whole platform.
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+# Services:
+#   postgres   system-of-record (RLS-enforced; app connects as non-superuser app_rw)
+#   redis      cache + rate limits + (future) Redis-Streams bus
+#   api        FastAPI (tenant middleware, AUTH_ENFORCED=true)
+#   worker     durable job runner (FOR UPDATE SKIP LOCKED)
+#   scheduler  beat loop: enqueue due steps, relay outbox, retries, partitions
+#
+# The api entrypoint runs migrations + bootstraps app_rw as the superuser, then
+# every service connects at runtime as app_rw so RLS actually applies.
+version: "3.9"
+
+x-app-env: &app-env
+  # runtime connection = NON-superuser (RLS applies)
+  DATABASE_URL: postgresql+psycopg2://app_rw:${APP_DB_PASSWORD:-app_rw_pw}@postgres:5432/drip
+  # migration/bootstrap connection = superuser (DDL + role creation)
+  MIGRATE_DATABASE_URL: postgresql+psycopg2://postgres:${POSTGRES_PASSWORD:-postgres_pw}@postgres:5432/drip
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:-change-me-in-prod}
+  AUTH_ENFORCED: "true"
+  MANDRILL_WEBHOOK_KEY: ${MANDRILL_WEBHOOK_KEY:-}
+  ENABLE_SES_TRANSPORT: ${ENABLE_SES_TRANSPORT:-false}
+  SCHEDULER_TIMEZONE: Asia/Riyadh
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: drip
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_pw}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d drip"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      <<: *app-env
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-app_rw_pw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_pw}
+    command: ["bash", "deploy/entrypoint_api.sh"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    command: ["python", "deploy/worker_main.py"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      api: {condition: service_started}
+    deploy:
+      replicas: 2          # scale workers horizontally; SKIP LOCKED makes it safe
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    command: ["python", "deploy/scheduler_main.py"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      api: {condition: service_started}
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

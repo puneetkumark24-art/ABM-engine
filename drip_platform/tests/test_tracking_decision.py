@@ -19,6 +19,7 @@ import models  # noqa: E402
 import models_ext as mx  # noqa: E402
 import models_p10  # noqa: E402,F401
 import models_p11 as p11  # noqa: E402
+import models_p12  # noqa: E402,F401  (metadata completeness for Postgres)
 from sequences import engine as seq_engine  # noqa: E402
 from abm_platform.services import (  # noqa: E402
     tracking, deliverability, decision, engagement, marketing, delivery,

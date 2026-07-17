@@ -182,4 +182,6 @@ def identify_visitor(db: Session, visitor_id: str, person_id: str) -> int:
     n = 0
     for ev in db.query(p11.WebEvent).filter_by(visitor_id=visitor_id,
                                                person_id=None).all():
-        ev.pe
+        ev.person_id = person_id; n += 1
+    db.commit()
+    return n

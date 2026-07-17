@@ -443,3 +443,11 @@ ALL_TABLES = [
     FormDef, FormSubmission, LandingPage,
     Asset, AssetUsage,
     Rule, RuleFiring,
+    WorkflowDef, WorkflowRun, NodeExecution,
+    MetricEvent,
+    ReportDef, ExecBrief,
+    Notification, NotifyPref,
+    Touch, AttributionResult,
+    AppRole, AppUser, Quota,
+    CopilotTurn,
+]

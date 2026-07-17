@@ -374,4 +374,14 @@ def pause_on_reply(db: Session, person_id: str, reason: str = "reply") -> dict:
                     models.SequenceEnrollment.person_id != person_id)
             .all()
         )
-  
+        for enr in others:
+            enr.status = "PAUSED"
+            enr.pause_reason = f"{reason}:account_centric"
+            _log(db, enr.id, "paused", step_number=enr.current_step,
+                 detail=f"{reason} (account-centric via person {person_id})")
+            account_paused += 1
+
+    db.commit()
+    logger.info("pause_on_reply person=%s: %d person + %d account-centric paused",
+                person_id, len(person_enrolls), account_paused)
+    return {"paused_person": len(person_enrolls), "paused_account": account_paused}

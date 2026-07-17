@@ -1,0 +1,336 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><title>Decimal ABM Enterprise Platform — Blueprint</title><style>
+:root{--navy:#0b1f38;--navy2:#12324f;--teal:#0e8390;--teal2:#12a4b4;--tealL:#e4f5f7;--ink:#17222e;--sub:#54636f;--line:#d7e0e8;--bg:#eef2f5;--card:#fff;--amber:#c9770a;--green:#159a52;--gray:#6b7280;}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);font-size:13.5px;line-height:1.55}
+.page{background:var(--card);max-width:1000px;margin:20px auto;padding:40px 50px;border:1px solid var(--line);border-radius:4px}
+.page.cover{background:linear-gradient(150deg,var(--navy),var(--navy2));color:#fff;border:none}
+@media print{body{background:#fff;font-size:10.5px}.page{margin:0 auto;max-width:none;border:none;border-radius:0;padding:24px 28px;page-break-after:always}}
+h1{font-size:30px;margin:0 0 8px}h2{font-size:20px;color:var(--navy);border-bottom:3px solid var(--teal);padding-bottom:7px;margin:0 0 14px}
+h3{font-size:15px;color:var(--navy2);margin:18px 0 6px}h4{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--teal);margin:14px 0 5px}
+.kicker{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--teal2);font-weight:700;margin-bottom:8px}
+code{font-family:ui-monospace,Consolas,monospace;background:#eef1f4;padding:1px 5px;border-radius:3px;font-size:.86em;color:var(--navy2)}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--navy);color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em}tr:nth-child(even) td{background:#f7fafb}
+.callout{border-left:4px solid var(--teal);background:var(--tealL);border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0}
+.flowbox{background:var(--navy);color:#eafcff;border-radius:8px;padding:14px 16px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7;white-space:pre;overflow-x:auto;margin:12px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.box{border:1px solid var(--line);border-radius:8px;padding:11px 13px;background:#fff}.box h4{margin-top:0}
+.mcard{border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:8px;padding:12px 14px;margin:10px 0;background:#fff}
+.mcard .mh{font-weight:700;font-size:14px;color:var(--navy)}.mcard .mr{font-size:11px;color:var(--sub);font-style:italic;margin:2px 0 6px}
+.mcard .ml{font-size:11.5px}.mcard b{color:var(--navy2)}
+.toc a{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:5px 0;color:var(--navy2);text-decoration:none;font-size:12.5px}
+.pillrow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.tag{font-size:10.5px;background:var(--tealL);color:#0a4750;border-radius:12px;padding:2px 9px}
+.foot{font-size:10.5px;color:var(--sub);text-align:right;border-top:1px solid var(--line);margin-top:22px;padding-top:6px}
+.num{color:var(--teal);font-weight:700;margin-right:8px}
+</style></head><body><div class="page cover">
+<div class="kicker" style="color:#7fe3ef">Decimal Technologies · Enterprise Architecture · Confidential</div>
+<h1>Decimal ABM Enterprise Platform</h1>
+<div style="font-size:17px;color:#cfe6f2;margin-bottom:20px">A self-contained, zero-external-dependency Account-Based Marketing platform — HubSpot, Mailchimp, Apollo, Customer.io, Instantly, Smartlead and n8n rebuilt as native modules.</div>
+<p style="max-width:660px;color:#d9e8f2">Master blueprint for a 26-module, zero-external-dependency ABM platform: HubSpot, Mailchimp, Apollo, Customer.io, Instantly, Smartlead and n8n rebuilt as native modules. Companion to the markdown spec repository <code>ABM_Enterprise_Platform/</code>.</p>
+<div style="margin-top:36px;color:#9fc4d8;font-size:12px">Compiled 16 July 2026 · 26 modules · 21 domain folders</div>
+</div><div class="page">
+<div class="kicker">Section 1</div><h2>Vision — Zero Human Intervention</h2>
+<p>The objective is Zero Human Intervention. External SaaS (HubSpot, Mailchimp, Apollo, Clay, Instantly, Smartlead, n8n) must stop being dependencies and become **native modules** the platform owns end-to-end. Instead of Signal Engine -&gt; Clay -&gt; Apollo -&gt; HubSpot -&gt; Mailchimp -&gt; Smartlead, the flow becomes a single owned pipeline: Signal Engine -&gt; ABM Intelligence Layer -&gt; ABM CRM Engine (HubSpot replica) -&gt; ABM Marketing Engine (Mailchimp replica) -&gt; ABM Outreach Engine -&gt; ABM Analytics Engine. This document is the complete engineering blueprint: exhaustive enough that an AI-assisted team (Claude Code / Cursor / Codex) can build it in ~5 days, with enterprise-grade quality, multi-tenancy, RBAC, Arabic/English i18n, and full extensibility.</p>
+<h3>From dependency chain to owned pipeline</h3>
+<div class="grid2">
+<div class="box"><h4>Before (rented)</h4><div class="flowbox" style="background:#33241a">Signal Engine
+  -> Clay
+  -> Apollo
+  -> HubSpot
+  -> Mailchimp
+  -> Smartlead</div></div>
+<div class="box"><h4>After (owned)</h4><div class="flowbox">Signal Engine
+  -> ABM Intelligence Layer
+  -> ABM CRM Engine (HubSpot replica)
+  -> ABM Marketing Engine (Mailchimp replica)
+  -> ABM Outreach Engine
+  -> ABM Analytics Engine</div></div>
+</div>
+<div class="callout"><b>How zero-intervention is achieved.</b> Zero Human Intervention is achieved by the Rules Engine (15) + Workflow Engine (16) + Journey Engine (08) driving the pipeline autonomously, the AI Engine (10) generating content, and the autonomy ladder (A1-A5) governing how much runs without review — with three hard stops that always require a human: (1) C-suite outreach, (2) anything failing compliance/consent/suppression, (3) actions above the earned trust tier. The Copilot (26) is the human&#x27;s window in; the platform runs without it.</div>
+<div class="foot">ABM Enterprise Platform · Vision</div></div><div class="page">
+<div class="kicker">Section 2</div><h2>The 26 modules at a glance</h2>
+<table><tr><th>#</th><th>Module</th><th>Domain folder</th><th>Replaces</th></tr><tr><td>01</td><td>Intelligence Engine</td><td><code>02_Intelligence</code></td><td>The &#x27;brain&#x27;</td></tr><tr><td>02</td><td>Signal Detection Engine</td><td><code>03_Signal_Detection</code></td><td>6sense/Bombora intent + Google Alerts + custom scrapers</td></tr><tr><td>03</td><td>Contact &amp; Account Enrichment Engine</td><td><code>04_Contact_Enrichment</code></td><td>Apollo + Clay + ZoomInfo + Lusha</td></tr><tr><td>04</td><td>Contact Intelligence Engine</td><td><code>04_Contact_Enrichment</code></td><td>HubSpot Contacts + Apollo person records</td></tr><tr><td>05</td><td>Account Engine</td><td><code>05_Account_Management</code></td><td>HubSpot Companies + 6sense account model</td></tr><tr><td>06</td><td>CRM Engine (HubSpot Replica)</td><td><code>06_CRM_Engine</code></td><td>HubSpot CRM in full</td></tr><tr><td>07</td><td>Marketing Automation Engine (Mailchimp Replica)</td><td><code>07_Marketing_Automation</code></td><td>Mailchimp + Customer.io + Brevo</td></tr><tr><td>08</td><td>Journey Builder Engine</td><td><code>07_Marketing_Automation</code></td><td>HubSpot Workflows + Customer.io journeys</td></tr><tr><td>09</td><td>Campaign Builder Engine</td><td><code>07_Marketing_Automation</code></td><td>HubSpot Campaigns + orchestration wrapper over ABM plays.</td></tr><tr><td>10</td><td>AI Personalization Engine</td><td><code>10_AI_Engine</code></td><td>Jasper/Copy.ai/Clay AI columns + custom prompt stacks</td></tr><tr><td>11</td><td>Email Delivery Engine</td><td><code>08_Email_Engine</code></td><td>Mandrill/SendGrid MTA + Postfix</td></tr><tr><td>12</td><td>LinkedIn Automation Engine</td><td><code>09_LinkedIn_Engine</code></td><td>Smartlead/Expandi/Dux-Soup</td></tr><tr><td>13</td><td>Landing Page &amp; Forms Engine</td><td><code>07_Marketing_Automation</code></td><td>HubSpot Landing Pages + Forms + Unbounce + popups/preference center.</td></tr><tr><td>14</td><td>Asset Library</td><td><code>07_Marketing_Automation</code></td><td>HubSpot Files + DAM</td></tr><tr><td>15</td><td>Rules Engine</td><td><code>13_Rules_Engine</code></td><td>HubSpot workflow logic + custom IFTTT</td></tr><tr><td>16</td><td>Workflow Engine (n8n-style)</td><td><code>11_Workflow_Engine</code></td><td>n8n / Zapier / Make</td></tr><tr><td>17</td><td>Analytics Engine</td><td><code>12_Analytics</code></td><td>HubSpot Analytics + Mailchimp Reports + product analytics</td></tr><tr><td>18</td><td>Lead &amp; Account Scoring Engine</td><td><code>05_Account_Management</code></td><td>HubSpot scoring + 6sense/MadKudu</td></tr><tr><td>19</td><td>Pipeline Management Engine</td><td><code>05_Account_Management</code></td><td>HubSpot deal pipelines + forecasting.</td></tr><tr><td>20</td><td>Reporting Engine</td><td><code>12_Analytics</code></td><td>HubSpot reports/dashboards + exports + scheduled digests.</td></tr><tr><td>21</td><td>Notification Engine</td><td><code>14_Admin</code></td><td>HubSpot notifications + Slack/Teams alerts.</td></tr><tr><td>22</td><td>Attribution Engine</td><td><code>12_Analytics</code></td><td>HubSpot attribution + Bizible-style multi-touch models.</td></tr><tr><td>23</td><td>API Gateway</td><td><code>15_API</code></td><td>Kong/Apigee + HubSpot public API surface.</td></tr><tr><td>24</td><td>Integration Layer &amp; Event Bus</td><td><code>16_UI</code></td><td>Internal Kafka/Redis event bus + connector framework (optional external bridges).</td></tr><tr><td>25</td><td>Admin Console &amp; User/Permission Management</td><td><code>14_Admin</code></td><td>HubSpot settings + super-admin + billing/quotas + RBAC.</td></tr><tr><td>26</td><td>AI Copilot</td><td><code>10_AI_Engine</code></td><td>HubSpot ChatSpot / Breeze</td></tr></table>
+<div class="foot">ABM Enterprise Platform · Module map</div></div><div class="page">
+<div class="kicker">Section 3</div><h2>Repository structure &amp; technology stack</h2>
+<h3>The 20-folder spec repository</h3>
+<table><tr><th>Folder</th><th>Contents</th></tr><tr><td><code>00_MASTER/</code></td><td>Master architecture, global data model, event catalog, cross-cutting specs, 5-day build plan, glossary.</td></tr><tr><td><code>01_Core_Platform/</code></td><td>Platform foundation: multi-tenancy, config, base entities, shared kernel, service/repository patterns.</td></tr><tr><td><code>02_Intelligence/</code></td><td>Module 01 Intelligence Engine + EPIS confidence spine + reasoning streams.</td></tr><tr><td><code>03_Signal_Detection/</code></td><td>Module 02 Signal Detection Engine (8 capture sub-streams, filter, decay).</td></tr><tr><td><code>04_Contact_Enrichment/</code></td><td>Module 03 Enrichment Engine + Module 04 Contact Intelligence Engine.</td></tr><tr><td><code>05_Account_Management/</code></td><td>Module 05 Account Engine + Module 18 Lead/Account Scoring + Module 19 Pipeline.</td></tr><tr><td><code>06_CRM_Engine/</code></td><td>Module 06 CRM Engine (full HubSpot replica).</td></tr><tr><td><code>07_Marketing_Automation/</code></td><td>Modules 07 Marketing, 08 Journey, 09 Campaign, 13 Landing/Forms, 14 Asset Library (Mailchimp+ replica).</td></tr><tr><td><code>08_Email_Engine/</code></td><td>Module 11 Email Delivery Engine (MTA, event pipeline, deliverability).</td></tr><tr><td><code>09_LinkedIn_Engine/</code></td><td>Module 12 LinkedIn Automation Engine (ban-risk gated).</td></tr><tr><td><code>10_AI_Engine/</code></td><td>Modules 10 AI Personalization + 26 AI Copilot.</td></tr><tr><td><code>11_Workflow_Engine/</code></td><td>Module 16 Workflow Engine (n8n-style node automation).</td></tr><tr><td><code>12_Analytics/</code></td><td>Modules 17 Analytics + 20 Reporting + 22 Attribution.</td></tr><tr><td><code>13_Rules_Engine/</code></td><td>Module 15 Rules Engine (no-code IF/THEN core).</td></tr><tr><td><code>14_Admin/</code></td><td>Modules 21 Notification + 25 Admin/User/Permission Management.</td></tr><tr><td><code>15_API/</code></td><td>Module 23 API Gateway.</td></tr><tr><td><code>16_UI/</code></td><td>Front-end app: dashboards, builders (journey/workflow/email/page), CRM UI, copilot; + Module 24 Integration Layer/event bus specs.</td></tr><tr><td><code>17_Database/</code></td><td>Global schema, ER diagrams, migrations strategy, partitioning, materialized views.</td></tr><tr><td><code>18_Deployment/</code></td><td>Docker/compose, environments, secrets, scaling, observability, backups, DR.</td></tr><tr><td><code>19_Testing/</code></td><td>Test strategy, fixtures, contract tests, load/perf, acceptance suites.</td></tr><tr><td><code>20_Documentation/</code></td><td>Cross-references, onboarding, runbooks, ADRs, glossary.</td></tr></table>
+<h3>Standard document set per module</h3>
+<p>Functional Specification (FSD), Business Requirements (BRD), Technical Design (TDD), Database Design &amp; ER, API Design, Business Rules, State Machines, Sequence Diagrams, Activity Diagrams, Events, Workflows, Permissions &amp; RBAC, Acceptance Criteria, Edge Cases, Testing, Future Enhancements.</p>
+<h3>Technology stack</h3>
+<table><tr><th>Layer</th><th>Choice</th></tr><tr><td>Language / runtime</td><td>Python 3.12+ (async), TypeScript (front-end)</td></tr><tr><td>API framework</td><td>FastAPI + Pydantic v2 (async, OpenAPI-native)</td></tr><tr><td>ORM / migrations</td><td>SQLAlchemy 2.x + Alembic</td></tr><tr><td>Primary DB</td><td>PostgreSQL 16 — UUID PKs, JSONB, partitioning, materialized views, row-level security</td></tr><tr><td>Cache / queue / bus</td><td>Redis (cache + Streams event bus) or Kafka for scale; Celery/RQ workers</td></tr><tr><td>Search</td><td>PostgreSQL FTS + optional OpenSearch for cross-object search</td></tr><tr><td>Vector / embeddings</td><td>pgvector for semantic search + document embeddings</td></tr><tr><td>AI models</td><td>Provider-agnostic adapter (Gemini / Anthropic / OpenAI) via Integration Layer; PII anonymized</td></tr><tr><td>Email MTA</td><td>Pluggable: Mandrill-style API adapter + SMTP; native event pipeline (pixel/redirect/webhooks)</td></tr><tr><td>Front-end</td><td>React + Tailwind; visual builders for journey/workflow/email/landing</td></tr><tr><td>Auth</td><td>OAuth2 / JWT + API keys; RBAC deny-by-default; multi-tenant row-level security</td></tr><tr><td>Infra</td><td>Docker + docker-compose (dev) / Kubernetes (scale); public HTTPS ingress for webhooks</td></tr><tr><td>Observability</td><td>Structured logging, metrics, tracing, health endpoints, audit logs</td></tr><tr><td>i18n</td><td>English + Arabic (RTL), locale-aware sending &amp; content</td></tr></table>
+<div class="foot">ABM Enterprise Platform · Repo &amp; stack</div></div><div class="page">
+<div class="kicker">Section 4</div><h2>Global data model &amp; event architecture</h2>
+<h3>Shared kernel entities</h3>
+<table><tr><th>Entity</th><th>Description</th><th>Owner</th></tr><tr><td><code>tenant</code></td><td>Workspace/org — root of multi-tenancy.</td><td>Admin (25)</td></tr><tr><td><code>user / team / role</code></td><td>Identity + RBAC.</td><td>Admin (25)</td></tr><tr><td><code>account</code></td><td>Target organization (bank/fintech/subsidiary/vendor).</td><td>Account Engine (05)</td></tr><tr><td><code>contact</code></td><td>Person at an account.</td><td>Contact Engine (04)</td></tr><tr><td><code>company</code></td><td>Non-target org / vendor / partner.</td><td>CRM (06)</td></tr><tr><td><code>relationship</code></td><td>Graph edge (org/person/vendor/tech).</td><td>CRM (06) / Graph</td></tr><tr><td><code>signal / raw_capture</code></td><td>Captured intelligence + provenance.</td><td>Signal Engine (02)</td></tr><tr><td><code>intelligence_record / nba / hypothesis</code></td><td>Reasoned intelligence.</td><td>Intelligence (01)</td></tr><tr><td><code>deal / pipeline / stage</code></td><td>Revenue objects.</td><td>CRM (06) / Pipeline (19)</td></tr><tr><td><code>activity</code></td><td>Universal interaction record.</td><td>CRM (06)</td></tr><tr><td><code>campaign / journey / enrollment</code></td><td>Orchestration objects.</td><td>Campaign (09)/Journey (08)</td></tr><tr><td><code>email_campaign / message / delivery_event</code></td><td>Marketing + delivery.</td><td>Marketing (07)/Delivery (11)</td></tr><tr><td><code>account_score / lead_score / modifier</code></td><td>Scoring.</td><td>Scoring (18)</td></tr><tr><td><code>event</code></td><td>Platform event (bus).</td><td>Integration Layer (24)</td></tr><tr><td><code>audit_log</code></td><td>Change history.</td><td>CRM (06)/Admin (25)</td></tr></table>
+<h3>Event bus catalog (representative)</h3>
+<table><tr><th>Event</th><th>Producer</th><th>Consumers</th></tr><tr><td><code>signal.created</code></td><td>Signal Engine</td><td>Intelligence, Scoring, Account, Enrichment</td></tr><tr><td><code>signal.cluster.promoted</code></td><td>Signal Engine</td><td>Intelligence</td></tr><tr><td><code>intelligence.record.created</code></td><td>Intelligence</td><td>Scoring, CRM, Copilot</td></tr><tr><td><code>intelligence.nba.created</code></td><td>Intelligence</td><td>CRM, Notification, Copilot</td></tr><tr><td><code>enrichment.entity.updated</code></td><td>Enrichment</td><td>Contact, Account, CRM, Scoring</td></tr><tr><td><code>contact.consent.changed</code></td><td>Contact</td><td>Marketing, Journey, Delivery</td></tr><tr><td><code>account.tiered</code></td><td>Account</td><td>Enrichment, Journey, Notification</td></tr><tr><td><code>account.held</code></td><td>Account</td><td>Journey, LinkedIn, Marketing (pause cascade)</td></tr><tr><td><code>score.updated / score.threshold.crossed</code></td><td>Scoring</td><td>Account, Intelligence, Analytics, Notification</td></tr><tr><td><code>deal.stage.changed</code></td><td>CRM/Pipeline</td><td>Pipeline, Attribution, Analytics, Marketing (transactional)</td></tr><tr><td><code>email.campaign.sent</code></td><td>Marketing</td><td>Delivery, Analytics</td></tr><tr><td><code>email.event.opened/clicked/bounced/complained</code></td><td>Delivery</td><td>Marketing, Contact, Scoring, Attribution, Analytics</td></tr><tr><td><code>email.reply.received</code></td><td>Delivery</td><td>Account (pause), Journey (pause), Notification</td></tr><tr><td><code>journey.enrolled / step.executed / goal.met / exited</code></td><td>Journey</td><td>Analytics, Campaign, Attribution</td></tr><tr><td><code>linkedin.reply.received / seat.cooldown / circuit_breaker.tripped</code></td><td>LinkedIn</td><td>Account, Journey, Notification</td></tr><tr><td><code>form.submitted / consent.captured</code></td><td>Landing/Forms</td><td>Contact, Journey, Analytics</td></tr><tr><td><code>rule.fired</code></td><td>Rules</td><td>Audit, target engines</td></tr><tr><td><code>workflow.run.finished / approval.requested</code></td><td>Workflow</td><td>Notification, Analytics</td></tr><tr><td><code>meeting.booked</code></td><td>Calendar/CRM</td><td>Account, Pipeline, Scoring, Attribution, Notification</td></tr><tr><td><code>quota.exhausted</code></td><td>Admin</td><td>Notification, calling engine (block)</td></tr></table>
+<div class="callout">At-least-once delivery · per-key ordering · idempotent consumers · schema registry · retry → DLQ → replay. Engines stay decoupled through the bus (Module 24).</div>
+<div class="foot">ABM Enterprise Platform · Data &amp; events</div></div><div class="page"><div class="kicker">Section 5</div><h2>Cross-cutting concerns (1/2)</h2><h3>Multi-tenancy</h3><p>Every entity carries tenant_id; row-level security enforces isolation; no cross-tenant reads. Tenant provisioning, plans, suspension in Admin (25).</p><h3>AuthN / AuthZ / RBAC</h3><p>OAuth2/JWT + API keys at the Gateway (23). RBAC is deny-by-default, permissions additive via roles (25). Row-level security ties records to owner/team; managers see team, admins see tenant.</p><h3>Audit logging</h3><p>Every privileged mutation writes an audit entry (actor, before/after, timestamp). CRM (06) and Admin (25) own the audit stores; all engines emit.</p><h3>Event architecture</h3><p>Async event bus (24) is the nervous system: at-least-once delivery, per-key ordering, idempotent consumers, schema registry + versioning, retry/DLQ/replay. Engines are decoupled producers/consumers.</p><h3>Error handling &amp; retries</h3><p>Standard error envelope (code, message, detail, trace_id). Transient failures retry with backoff; exhausted -&gt; DLQ or failure path. Outreach failures never silently drop.</p><h3>Scheduling &amp; workers</h3><p>Central scheduler emits schedule.tick; background workers run captures, scoring, rollups, journey advancement, sends. PID/lease locks prevent double-run.</p><h3>Queue architecture</h3><p>Per-domain queues (send, enrichment, ai, workflow) with priority + rate control; back-pressure via throttling.</p><h3>Caching</h3><p>Redis for hot reads (scores, segments, dashboards); cache invalidation on the owning entity&#x27;s change event.</p><div class="foot">ABM Enterprise Platform · Cross-cutting 1</div></div><div class="page"><div class="kicker">Section 5</div><h2>Cross-cutting concerns (2/2)</h2><h3>Search architecture</h3><p>Postgres FTS for in-app search; cross-object search (CRM) optionally OpenSearch; pgvector for semantic/document search.</p><h3>Performance &amp; scalability</h3><p>Partition large tables (contacts, activities, events, messages); materialized views for analytics; horizontal worker scaling; 1M+ contacts and high send volume as design targets.</p><h3>Security</h3><p>Secrets via vault refs (never inline); signed webhooks; PII anonymization before LLM; encryption at rest/in transit; least-privilege service accounts; PDPL compliance.</p><h3>Internationalization</h3><p>English + Arabic (RTL) across UI and generated content; locale-aware timezones; KSA calendar (Sun-Thu, Ramadan blackout) enforced in sending.</p><h3>Compliance spine</h3><p>Consent (none/opted_in/denied) + do_not_contact + suppression enforced at enroll AND send; HMAC-signed unsubscribe; account-centric pause; C-suite always human review; PDPL legal gate before live outreach.</p><h3>Configuration management</h3><p>Per-tenant settings + feature flags in Admin; environment config via env vars; no hardcoded secrets.</p><h3>Deployment architecture</h3><p>Containerized services behind API Gateway; public HTTPS ingress for inbound webhooks (email/LinkedIn/calendar); managed Postgres + Redis; blue/green deploys.</p><h3>Testing strategy</h3><p>Unit + contract (OpenAPI) + integration (event flows) + property (idempotency/ordering) + load + acceptance suites per module; golden-file tests for scoring &amp; reasoning determinism.</p>
+<h3>Microservice boundaries</h3><p>Each numbered engine is an independently deployable service (or a bounded module in a modular monolith for the 5-day build, split later). Services never share tables across boundaries; they communicate via the event bus (24) and the API Gateway (23). The CRM (06) owns the relational spine; other engines reference CRM objects by id and subscribe to CRM events. Scoring (18), Intelligence (01), and Analytics (17) are read-heavy consumers. Delivery (11), LinkedIn (12), Workflow (16) are execution services. Admin (25) + Gateway (23) + Integration Layer (24) are the platform control/plumbing plane.</p>
+<div class="foot">ABM Enterprise Platform · Cross-cutting 2</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (1/9)</div>
+<h2>01–03 · Intelligence Engine → Contact &amp; Account Enrichment Engine</h2>
+<div class="mcard">
+<div class="mh">01 · Intelligence Engine</div>
+<div class="mr">Replaces: The &#x27;brain&#x27; — no direct external equivalent; the orchestration layer above Clay/Apollo/6sense intent.</div>
+<div class="ml"><b>Purpose.</b> The central reasoning and orchestration layer that turns raw captured signals and enriched graph data into ranked, explained, action-ready intelligence. It owns the confidence model (EPIS), the reasoning streams (HYP/VSAT/POWER/TENSION/MOBILITY), and the &#x27;why now / who / what to say&#x27; synthesis every downstream engine consumes.</div>
+<div class="pillrow"><span class="tag">Signal reasoning streams and hypothesis generation</span><span class="tag">EPIS confidence calibration on every derived fact</span><span class="tag">Account/opportunity synthesis (why-now narratives)</span><span class="tag">Next-Best-Action computation feeding CRM &amp; Journey engines</span><span class="tag">Intelligence briefs (account, persona, meeting)</span></div>
+<div class="ml"><b>Key entities:</b> intelligence_record, hypothesis, nba_recommendation, evidence_ref.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/intelligence/accounts/{id}/brief; GET /v1/intelligence/accounts/{id}/nba; POST /v1/intelligence/hypotheses:generate; POST /v1/intelligence/records:query.</div>
+<div class="ml"><b>Top rules:</b> INT-001 INT-002 INT-003 INT-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>intelligence.record.created, intelligence.nba.created, intelligence.hypothesis.confirmed</code></div>
+</div><div class="mcard">
+<div class="mh">02 · Signal Detection Engine</div>
+<div class="mr">Replaces: 6sense/Bombora intent + Google Alerts + custom scrapers — capture &amp; first-pass classification.</div>
+<div class="ml"><b>Purpose.</b> Autonomous capture of buying and context signals across eight sourcing sub-streams, with provenance, idempotency, relevance filtering, dedup, and decay — producing clean, deduped, confidence-eligible signals for the Intelligence Engine.</div>
+<div class="pillrow"><span class="tag">8 capture sub-streams (NEWS/REG/EXEC/VENDOR/SUBS/EVENT/FIN/PATH)</span><span class="tag">raw_captures provenance log + dedup</span><span class="tag">SIG-RELEVANCE 4-axis filter</span><span class="tag">Signal decay stamping</span><span class="tag">Clustering related signals</span></div>
+<div class="ml"><b>Key entities:</b> raw_capture, signal, signal_cluster, source.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/signals; POST /v1/signals; POST /v1/signals/{id}:reclassify; GET /v1/sources.</div>
+<div class="ml"><b>Top rules:</b> SIG-001 SIG-002 SIG-003 SIG-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>signal.created, signal.cluster.promoted, signal.filtered_out, source.ban_risk.tripped</code></div>
+</div><div class="mcard">
+<div class="mh">03 · Contact &amp; Account Enrichment Engine</div>
+<div class="mr">Replaces: Apollo + Clay + ZoomInfo + Lusha — data acquisition, waterfall enrichment, verification.</div>
+<div class="ml"><b>Purpose.</b> Acquire, resolve, verify and continuously refresh contact and company data into the graph — a native waterfall enrichment pipeline with provider adapters, email/phone verification, and identity resolution, so the platform owns its data instead of renting Apollo.</div>
+<div class="pillrow"><span class="tag">Provider adapter framework (pluggable data sources)</span><span class="tag">Waterfall enrichment (try sources in priority order)</span><span class="tag">Email/phone verification &amp; scoring</span><span class="tag">Identity resolution &amp; merge</span><span class="tag">Refresh scheduling &amp; staleness detection</span></div>
+<div class="ml"><b>Key entities:</b> enrichment_job, provider, verification, merge_candidate.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/enrichment/jobs; GET /v1/enrichment/jobs/{id}; POST /v1/enrichment/verify; GET /v1/enrichment/merge-candidates.</div>
+<div class="ml"><b>Top rules:</b> ENR-001 ENR-002 ENR-003 ENR-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>enrichment.entity.updated, enrichment.verification.completed, enrichment.merge.detected</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (2/9)</div>
+<h2>04–06 · Contact Intelligence Engine → CRM Engine</h2>
+<div class="mcard">
+<div class="mh">04 · Contact Intelligence Engine</div>
+<div class="mr">Replaces: HubSpot Contacts + Apollo person records — the people system of record &amp; scoring.</div>
+<div class="ml"><b>Purpose.</b> System of record for people at scale (architected for 1M+ contacts): profile, career history, persona classification, decision authority, engagement history, and per-contact intelligence — the authoritative contact object every other engine references.</div>
+<div class="pillrow"><span class="tag">Contact CRUD &amp; bulk import</span><span class="tag">Persona &amp; seniority classification</span><span class="tag">Decision authority / buying influence scoring</span><span class="tag">Engagement history rollup</span><span class="tag">Consent &amp; suppression state on the person</span></div>
+<div class="ml"><b>Key entities:</b> contact, career_event, contact_engagement.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/contacts; POST /v1/contacts; PATCH /v1/contacts/{id}; POST /v1/contacts:bulk.</div>
+<div class="ml"><b>Top rules:</b> CON-001 CON-002 CON-003 CON-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>contact.created, contact.updated, contact.classified, contact.consent.changed</code></div>
+</div><div class="mcard">
+<div class="mh">05 · Account Engine</div>
+<div class="mr">Replaces: HubSpot Companies + 6sense account model — the account system of record &amp; tiering.</div>
+<div class="ml"><b>Purpose.</b> System of record for target organizations and their structure (parents, subsidiaries, vendors, tech stack), the account scoring inputs, tiering (HOT/WARM/COLD), and the account-centric orchestration rule that one reply pauses the whole account.</div>
+<div class="pillrow"><span class="tag">Account CRUD &amp; hierarchy (parent/subsidiary)</span><span class="tag">Tech stack &amp; vendor mapping on the account</span><span class="tag">Account tier assignment &amp; daily budget</span><span class="tag">Account-level pause/hold state</span><span class="tag">Product-fit mapping (account x product)</span></div>
+<div class="ml"><b>Key entities:</b> account, account_tech, product_fit, account_hold.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/accounts; POST /v1/accounts; PATCH /v1/accounts/{id}; GET /v1/accounts/{id}/graph.</div>
+<div class="ml"><b>Top rules:</b> ACC-001 ACC-002 ACC-003 ACC-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>account.created, account.tiered, account.held, account.released</code></div>
+</div><div class="mcard">
+<div class="mh">06 · CRM Engine (HubSpot Replica)</div>
+<div class="mr">Replaces: HubSpot CRM in full — accounts, contacts, deals, activities, custom objects, properties, timelines, workflows.</div>
+<div class="ml"><b>Purpose.</b> A full native CRM: the relational spine tying accounts, contacts, companies, buying committees, relationship graph, deals, pipelines, activities, tasks, notes, custom objects and properties into one auditable system of record with AI timeline, engagement scoring, next-best-action, forecasting, duplicate/merge, search, views, lists and segments — reproducing HubSpot CRM capability natively.</div>
+<div class="pillrow"><span class="tag">Objects: Account, Contact, Company, Deal, Opportunity, Activity, Task, Note, Meeting, Call, Email, Custom Object</span><span class="tag">Buying Committee &amp; Relationship Graph</span><span class="tag">Properties framework (custom fields) + Lead Status + Lifecycle</span><span class="tag">Pipelines &amp; stages (thin ref to Pipeline Engine 19)</span><span class="tag">Owners/Teams/Permissions, Views/Lists/Segments/Tags</span></div>
+<div class="ml"><b>Key entities:</b> crm_object, property, deal, activity, committee_member, relationship, view, crm_task, audit_log.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/crm/{object}/{id}; POST /v1/crm/{object}; PATCH /v1/crm/{object}/{id}; POST /v1/crm/properties.</div>
+<div class="ml"><b>Top rules:</b> CRM-001 CRM-002 CRM-003 CRM-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>crm.contact.changed, crm.deal.changed, deal.stage.changed, crm.merged</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (3/9)</div>
+<h2>07–09 · Marketing Automation Engine → Campaign Builder Engine</h2>
+<div class="mcard">
+<div class="mh">07 · Marketing Automation Engine (Mailchimp Replica)</div>
+<div class="mr">Replaces: Mailchimp + Customer.io + Brevo — audience, segmentation, templates, sending, tracking, automation, deliverability.</div>
+<div class="ml"><b>Purpose.</b> A full native marketing-automation system: audiences &amp; dynamic segments, suppression lists, template/email builder with AI generation, sending with open/click/bounce tracking, A/B &amp; multivariate testing, personalization/merge tags/dynamic blocks, transactional + drip automation, deliverability (IP warming, domain/DKIM/SPF/DMARC, SMTP), scheduling with timezone/send-time optimization — replacing Mailchimp entirely.</div>
+<div class="pillrow"><span class="tag">Audiences, Lists, Segments (static+dynamic), Suppression lists</span><span class="tag">Template Builder / Drag-drop Email Builder / AI Email + Subject generator</span><span class="tag">Preview, Spam checker, Link/Open/Click/Bounce tracking, Heatmaps</span><span class="tag">A/B + Multivariate testing</span><span class="tag">Personalization: merge tags, dynamic blocks</span></div>
+<div class="ml"><b>Key entities:</b> audience, suppression, template, email_campaign, email_message, ab_test, domain.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/mkt/audiences; GET /v1/mkt/audiences/{id}/members; POST /v1/mkt/templates; POST /v1/mkt/templates:generate.</div>
+<div class="ml"><b>Top rules:</b> MKT-001 MKT-002 MKT-003 MKT-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>email.campaign.sent, email.event.opened, email.event.clicked, email.event.bounced</code></div>
+</div><div class="mcard">
+<div class="mh">08 · Journey Builder Engine</div>
+<div class="mr">Replaces: HubSpot Workflows + Customer.io journeys — visual multi-step, multi-channel orchestration.</div>
+<div class="ml"><b>Purpose.</b> Visual, multi-channel journey orchestration: an account/contact enters a journey and moves through steps, conditions, triggers, actions, delays, goals and exit conditions across email, LinkedIn, WhatsApp, tasks and webhooks — the drip/sequence brain that replaces Smartlead/Instantly sequencing natively, with pause-on-reply and the account-centric rule enforced.</div>
+<div class="pillrow"><span class="tag">Journey canvas: steps, branches, delays, waits</span><span class="tag">Enrollment (from segment/list/trigger/rule)</span><span class="tag">Conditions &amp; decision splits</span><span class="tag">Multi-channel actions (email/LinkedIn/WhatsApp/task/webhook/AI)</span><span class="tag">Goals &amp; exit conditions</span></div>
+<div class="ml"><b>Key entities:</b> journey, journey_step, enrollment, journey_event.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/journeys; POST /v1/journeys/{id}:activate; POST /v1/journeys/{id}:enroll; GET /v1/journeys/{id}/analytics.</div>
+<div class="ml"><b>Top rules:</b> JRN-001 JRN-002 JRN-003 JRN-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>journey.enrolled, journey.step.executed, journey.goal.met, journey.exited</code></div>
+</div><div class="mcard">
+<div class="mh">09 · Campaign Builder Engine</div>
+<div class="mr">Replaces: HubSpot Campaigns + orchestration wrapper over ABM plays.</div>
+<div class="ml"><b>Purpose.</b> The strategic wrapper that groups journeys, email campaigns, LinkedIn sequences, landing pages, assets and target account lists into a single named ABM campaign with objectives, budget, timeline, membership and unified ROI — the object leadership plans and reports against.</div>
+<div class="pillrow"><span class="tag">Campaign object: objective, audience (account list), budget, timeline, owner</span><span class="tag">Membership: journeys, email campaigns, sequences, assets, landing pages under one campaign</span><span class="tag">Unified campaign analytics &amp; ROI/pipeline attribution rollup</span><span class="tag">Campaign templates (reusable ABM plays)</span></div>
+<div class="ml"><b>Key entities:</b> campaign, campaign_member, campaign_metric.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/campaigns; POST /v1/campaigns/{id}/members; GET /v1/campaigns/{id}/roi; POST /v1/campaigns:from-template.</div>
+<div class="ml"><b>Top rules:</b> CMP-001 CMP-002 CMP-003 CMP-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>campaign.activated, campaign.completed</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (4/9)</div>
+<h2>10–12 · AI Personalization Engine → LinkedIn Automation Engine</h2>
+<div class="mcard">
+<div class="mh">10 · AI Personalization Engine</div>
+<div class="mr">Replaces: Jasper/Copy.ai/Clay AI columns + custom prompt stacks — content generation &amp; personalization.</div>
+<div class="ml"><b>Purpose.</b> The content-generation brain: turns intelligence (brief, persona, pain, signals) into channel-ready, on-brand, compliant copy — emails, subjects, LinkedIn messages, landing-page copy, proposals, case studies, meeting prep — via a governed prompt/orchestration layer with the 7-agent chain, QC guardrails, and PII anonymization.</div>
+<div class="pillrow"><span class="tag">7-agent chain: Signal Analyst-&gt;Account Research-&gt;Persona Psychology-&gt;Pain Inference-&gt;Strategy-&gt;Message Gen-&gt;QC</span><span class="tag">Generators: email, subject, LinkedIn, landing page, proposal, case study, meeting prep, call summary</span><span class="tag">Prompt Builder &amp; template library</span><span class="tag">Brand voice + teaser-discipline QC guardrails</span><span class="tag">PII anonymization (no real names/emails to LLM)</span></div>
+<div class="ml"><b>Key entities:</b> generation, prompt, brand_voice, prediction.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/ai/generate; POST /v1/ai/generate:bulk; POST /v1/ai/qc; POST /v1/ai/prompts.</div>
+<div class="ml"><b>Top rules:</b> AIP-001 AIP-002 AIP-003 AIP-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>ai.generation.created, ai.generation.qc_failed, ai.prediction.updated</code></div>
+</div><div class="mcard">
+<div class="mh">11 · Email Delivery Engine</div>
+<div class="mr">Replaces: Mandrill/SendGrid MTA + Postfix — the actual send + event pipeline.</div>
+<div class="ml"><b>Purpose.</b> The low-level send-and-track layer: accept a rendered message, deliver it via MTA/provider with IP-pool + reputation management, and capture the full event pipeline (delivered/open/click/bounce/complaint) that everything upstream depends on — the native replacement for Mailchimp&#x27;s real moat.</div>
+<div class="pillrow"><span class="tag">Send API (single + batch) with queueing &amp; rate control</span><span class="tag">Provider/MTA adapters (SMTP, Mandrill-style API) + failover</span><span class="tag">Open pixel, click redirect, bounce/complaint webhooks</span><span class="tag">Feedback-loop registration, suppression sync</span><span class="tag">IP pool &amp; warmup enforcement, throttling</span></div>
+<div class="ml"><b>Key entities:</b> send_request, delivery_event, ip_pool, provider_route.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/delivery/send; POST /v1/delivery/send:batch; POST /v1/delivery/webhooks/{provider}; GET /v1/delivery/messages/{id}/events.</div>
+<div class="ml"><b>Top rules:</b> DEL-001 DEL-002 DEL-003 DEL-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>email.event.delivered, email.event.opened, email.event.clicked, email.event.bounced</code></div>
+</div><div class="mcard">
+<div class="mh">12 · LinkedIn Automation Engine</div>
+<div class="mr">Replaces: Smartlead/Expandi/Dux-Soup — LinkedIn touches, gated by ban-risk controls.</div>
+<div class="ml"><b>Purpose.</b> Native, safety-first LinkedIn outreach: connection requests, messages, InMail, profile views and post engagement as journey/sequence steps — behind a strict ban-risk circuit breaker, human-like pacing, and per-seat daily limits. Deliberately the last capability activated.</div>
+<div class="pillrow"><span class="tag">LinkedIn action steps: connect, message, InMail, view, follow, like</span><span class="tag">Per-seat daily limits + human-like randomized pacing</span><span class="tag">Ban-risk circuit breaker + anomaly halt</span><span class="tag">Seat/session management (per-user auth)</span><span class="tag">Reply detection -&gt; pause-on-reply</span></div>
+<div class="ml"><b>Key entities:</b> li_seat, li_action, li_sequence.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/linkedin/seats; POST /v1/linkedin/actions; GET /v1/linkedin/seats/{id}/health; POST /v1/linkedin/circuit-breaker:status.</div>
+<div class="ml"><b>Top rules:</b> LI-001 LI-002 LI-003 LI-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>linkedin.action.sent, linkedin.reply.received, linkedin.seat.cooldown, linkedin.circuit_breaker.tripped</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (5/9)</div>
+<h2>13–15 · Landing Page &amp; Forms Engine → Rules Engine</h2>
+<div class="mcard">
+<div class="mh">13 · Landing Page &amp; Forms Engine</div>
+<div class="mr">Replaces: HubSpot Landing Pages + Forms + Unbounce + popups/preference center.</div>
+<div class="ml"><b>Purpose.</b> Native landing pages, forms, popups, preference &amp; unsubscribe centers: a builder + hosting + submission pipeline that captures leads directly into the CRM, powers gated assets (whitepaper/case-study downloads), and manages consent — closing the loop the BFSI whitepaper campaign needed.</div>
+<div class="pillrow"><span class="tag">Landing page builder (blocks) + hosting + SEO/OG/JSON-LD</span><span class="tag">Forms (fields, validation, progressive profiling, hidden UTM)</span><span class="tag">Popups &amp; preference center + unsubscribe center</span><span class="tag">Submission -&gt; contact create/update + journey enroll + consent capture</span><span class="tag">Gated content delivery (asset unlock)</span></div>
+<div class="ml"><b>Key entities:</b> landing_page, form, submission, preference.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/pages; POST /v1/forms; POST /v1/forms/{id}/submit; GET /p/{slug}.</div>
+<div class="ml"><b>Top rules:</b> LP-001 LP-002 LP-003 LP-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>form.submitted, page.published, preference.updated, consent.captured</code></div>
+</div><div class="mcard">
+<div class="mh">14 · Asset Library</div>
+<div class="mr">Replaces: HubSpot Files + DAM — content &amp; collateral store.</div>
+<div class="ml"><b>Purpose.</b> Central store for marketing/sales collateral (whitepapers, case studies, one-pagers, decks, images) with versioning, gating, usage tracking and CDN delivery — the source of truth for every asset a campaign, landing page or email references.</div>
+<div class="pillrow"><span class="tag">Asset upload + versioning + metadata/tags</span><span class="tag">Gating flag + signed/expiring links</span><span class="tag">Usage tracking (downloads, which campaigns use it)</span><span class="tag">CDN/hosting + access control</span><span class="tag">AI-generated asset intake (proposals/case studies from AI Engine)</span></div>
+<div class="ml"><b>Key entities:</b> asset, asset_usage.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/assets; GET /v1/assets; POST /v1/assets/{id}:sign; GET /v1/assets/{id}/usage.</div>
+<div class="ml"><b>Top rules:</b> AST-001 AST-002 AST-003 AST-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>asset.published, asset.downloaded</code></div>
+</div><div class="mcard">
+<div class="mh">15 · Rules Engine</div>
+<div class="mr">Replaces: HubSpot workflow logic + custom IFTTT — the no-code IF/THEN decision core.</div>
+<div class="ml"><b>Purpose.</b> The configurable no-code decision core every enterprise product revolves around: WHEN/IF (conditions over signals, scores, entities, events) THEN (actions across any engine). Non-developers compose rules like &#x27;IF signal_score&gt;80 AND funding&gt;$50M AND CTO exists THEN create opportunity, assign owner, generate brief+email+LinkedIn sequence, start campaign, wait 3 days, check open...&#x27; — evaluated deterministically and auditable.</div>
+<div class="pillrow"><span class="tag">Rule authoring (conditions + actions) no-code</span><span class="tag">Condition operators over any entity/field/event/score</span><span class="tag">Action catalog (create/assign/generate/enroll/notify/update/wait/branch)</span><span class="tag">Rule evaluation engine (event-driven + scheduled)</span><span class="tag">Rule versioning, priority, conflict resolution, dry-run/simulate</span></div>
+<div class="ml"><b>Key entities:</b> rule, rule_firing, action_def, condition_op.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/rules; POST /v1/rules/{id}:simulate; POST /v1/rules/{id}:activate; GET /v1/rules/{id}/firings.</div>
+<div class="ml"><b>Top rules:</b> RUL-001 RUL-002 RUL-003 RUL-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>rule.fired, rule.action.executed, rule.conflict.detected</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (6/9)</div>
+<h2>16–18 · Workflow Engine → Lead &amp; Account Scoring Engine</h2>
+<div class="mcard">
+<div class="mh">16 · Workflow Engine (n8n-style)</div>
+<div class="mr">Replaces: n8n / Zapier / Make — visual node-based automation inside the platform.</div>
+<div class="ml"><b>Purpose.</b> A visual, node-based automation builder (like n8n but native): drag nodes — Email, LinkedIn, Webhook, CRM, Condition, Delay, Wait, Decision, Loop, Merge, Split, HTTP, Python, LLM, News/RSS, Slack, Teams, WhatsApp, SMS, Call, Meeting, Calendar, Approval, Manual Step, AI Step — wire them into durable, resumable workflows that power everything from onboarding to complex multi-branch plays.</div>
+<div class="pillrow"><span class="tag">Visual DAG builder with 25+ node types</span><span class="tag">Durable execution (resumable across waits/restarts)</span><span class="tag">Triggers: event, schedule, webhook, manual</span><span class="tag">Data mapping between nodes; expressions</span><span class="tag">Error handling, retries, timeouts per node</span></div>
+<div class="ml"><b>Key entities:</b> workflow, workflow_run, node_execution, credential.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/workflows; POST /v1/workflows/{id}:run; GET /v1/workflows/runs/{id}; POST /v1/workflows/runs/{id}:resume.</div>
+<div class="ml"><b>Top rules:</b> WFL-001 WFL-002 WFL-003 WFL-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>workflow.run.started, workflow.run.finished, workflow.node.failed, workflow.approval.requested</code></div>
+</div><div class="mcard">
+<div class="mh">17 · Analytics Engine</div>
+<div class="mr">Replaces: HubSpot Analytics + Mailchimp Reports + product analytics — metrics &amp; funnels.</div>
+<div class="ml"><b>Purpose.</b> Unified analytics across accounts, campaigns, journeys, pipeline, revenue, email, LinkedIn, AI performance and workflows — an event-sourced metrics layer with funnels, cohorts, conversion, response/meeting rates and dashboards, feeding both the Reporting Engine and the Copilot.</div>
+<div class="pillrow"><span class="tag">Event ingestion from the platform event bus into an analytics store</span><span class="tag">Metric definitions &amp; aggregations (rollups, funnels, cohorts)</span><span class="tag">Domain analytics: account, campaign, journey, pipeline, revenue, email, LinkedIn, AI, workflow</span><span class="tag">Conversion funnels, response/meeting rates, CAC hooks</span><span class="tag">Query API + materialized dashboards</span></div>
+<div class="ml"><b>Key entities:</b> metric_event, metric_def, rollup, funnel.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/analytics/query; GET /v1/analytics/funnels/{id}; POST /v1/analytics/metrics; GET /v1/analytics/dashboards/{key}.</div>
+<div class="ml"><b>Top rules:</b> ANL-001 ANL-002 ANL-003 ANL-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>analytics.rollup.completed, analytics.anomaly.detected</code></div>
+</div><div class="mcard">
+<div class="mh">18 · Lead &amp; Account Scoring Engine</div>
+<div class="mr">Replaces: HubSpot scoring + 6sense/MadKudu — the scoring math &amp; Effective-Opportunity model.</div>
+<div class="ml"><b>Purpose.</b> The quantitative core: computes the 0-100 account score (Signal 35% / Regulatory 30% / Reachability 20% / Relationship 15%), the Effective-Opportunity equation with its modifier chain, and contact-level lead scores — recalculated daily and on material events, driving tiering, routing and prioritization.</div>
+<div class="pillrow"><span class="tag">Account base score (4 weighted dimensions)</span><span class="tag">Effective-Opportunity = Dynamic_Score x ICS/100 x Stage x Budget x Entrenchment x Risk x Window</span><span class="tag">Contact lead scoring (fit + engagement)</span><span class="tag">Modifier lookup table (Bible Artifact 1)</span><span class="tag">Daily recompute + event-driven recompute</span></div>
+<div class="ml"><b>Key entities:</b> account_score, lead_score, modifier, score_event.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/scoring/accounts/{id}; POST /v1/scoring/accounts/{id}:recompute; GET /v1/scoring/accounts/{id}/history; PUT /v1/scoring/modifiers.</div>
+<div class="ml"><b>Top rules:</b> SCO-001 SCO-002 SCO-003 SCO-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>score.updated, score.threshold.crossed</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (7/9)</div>
+<h2>19–21 · Pipeline Management Engine → Notification Engine</h2>
+<div class="mcard">
+<div class="mh">19 · Pipeline Management Engine</div>
+<div class="mr">Replaces: HubSpot deal pipelines + forecasting.</div>
+<div class="ml"><b>Purpose.</b> Deal pipeline configuration and progression: multiple pipelines, custom stages with entry/exit criteria and probabilities, weighted forecasting, gap-to-quota and pipeline-health analytics — the revenue spine the CRM deals move along.</div>
+<div class="pillrow"><span class="tag">Pipeline &amp; stage config (per product/segment)</span><span class="tag">Stage entry/exit criteria &amp; default probabilities</span><span class="tag">Weighted forecast (commit/likely/worst)</span><span class="tag">Pipeline health: stalled deals, single-threaded, hygiene</span><span class="tag">Quota &amp; gap analysis</span></div>
+<div class="ml"><b>Key entities:</b> pipeline, stage, forecast, pipeline_health.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/pipelines; GET /v1/pipelines/{id}/forecast; GET /v1/pipelines/{id}/health; PATCH /v1/pipelines/{id}/stages.</div>
+<div class="ml"><b>Top rules:</b> PIP-001 PIP-002 PIP-003 PIP-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>forecast.updated, pipeline.deal.stalled, pipeline.health.flagged</code></div>
+</div><div class="mcard">
+<div class="mh">20 · Reporting Engine</div>
+<div class="mr">Replaces: HubSpot reports/dashboards + exports + scheduled digests.</div>
+<div class="ml"><b>Purpose.</b> Turns analytics into consumable, shareable output: custom report builder, prebuilt dashboards, scheduled email digests, exports (PDF/CSV/XLSX), and the executive-brief generator (one-click pre-meeting PDF) — the presentation layer over the Analytics Engine.</div>
+<div class="pillrow"><span class="tag">Report builder (pick metrics/dims/viz)</span><span class="tag">Dashboard composition (11 role-based dashboards)</span><span class="tag">Scheduled digests (daily/weekly)</span><span class="tag">Exports: PDF/CSV/XLSX</span><span class="tag">Executive Brief generator (account one-pager PDF)</span></div>
+<div class="ml"><b>Key entities:</b> report, dashboard, schedule, brief.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/reports; GET /v1/reports/{id}/render; POST /v1/reports/{id}:export; POST /v1/reports/schedules.</div>
+<div class="ml"><b>Top rules:</b> REP-001 REP-002 REP-003 REP-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>report.exported, digest.sent, brief.generated</code></div>
+</div><div class="mcard">
+<div class="mh">21 · Notification Engine</div>
+<div class="mr">Replaces: HubSpot notifications + Slack/Teams alerts.</div>
+<div class="ml"><b>Purpose.</b> Central multi-channel notification and alerting: in-app, email, Slack, Teams, WhatsApp — delivering NBAs, replies, hot-account alerts, approvals, anomalies and digests to the right person with preferences, batching and escalation.</div>
+<div class="pillrow"><span class="tag">Notification templates + channels (in-app/email/Slack/Teams/WhatsApp)</span><span class="tag">User notification preferences &amp; quiet hours</span><span class="tag">Real-time alerts (reply, hot account, approval needed, anomaly)</span><span class="tag">Batching/digest + escalation policies</span><span class="tag">Delivery tracking of notifications</span></div>
+<div class="ml"><b>Key entities:</b> notification, notify_pref, escalation.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/notifications:send; GET /v1/notifications; POST /v1/notifications/{id}:read; PUT /v1/notifications/preferences.</div>
+<div class="ml"><b>Top rules:</b> NOT-001 NOT-002 NOT-003 NOT-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>notification.sent, notification.escalated</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (8/9)</div>
+<h2>22–24 · Attribution Engine → Integration Layer &amp; Event Bus</h2>
+<div class="mcard">
+<div class="mh">22 · Attribution Engine</div>
+<div class="mr">Replaces: HubSpot attribution + Bizible-style multi-touch models.</div>
+<div class="ml"><b>Purpose.</b> Assigns credit for pipeline and revenue across the touches, campaigns, journeys and channels that influenced an account — multi-touch attribution models (first/last/linear/time-decay/W-shaped/custom) that turn the activity graph into ROI the Campaign and Reporting engines consume.</div>
+<div class="pillrow"><span class="tag">Touch capture into attribution paths</span><span class="tag">Attribution models: first, last, linear, time-decay, U/W-shaped, custom</span><span class="tag">Account-based attribution (credit at account not just contact)</span><span class="tag">Campaign/channel/journey ROI rollup</span><span class="tag">Model comparison &amp; configurable window</span></div>
+<div class="ml"><b>Key entities:</b> touch, attribution_path, attribution_result.</div>
+<div class="ml"><b>Signature APIs:</b> GET /v1/attribution/campaigns/{id}; POST /v1/attribution:recompute; GET /v1/attribution/models:compare.</div>
+<div class="ml"><b>Top rules:</b> ATT-001 ATT-002 ATT-003 ATT-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>attribution.recomputed</code></div>
+</div><div class="mcard">
+<div class="mh">23 · API Gateway</div>
+<div class="mr">Replaces: Kong/Apigee + HubSpot public API surface.</div>
+<div class="ml"><b>Purpose.</b> The single, secured entry point for all external and inter-service API traffic: routing, authentication, authorization, rate limiting, quotas, versioning, request/response validation, API keys, webhooks-out and developer docs — the front door to the whole platform.</div>
+<div class="pillrow"><span class="tag">Request routing to services</span><span class="tag">AuthN (OAuth2/JWT/API key) + AuthZ (RBAC/scopes)</span><span class="tag">Rate limiting, quotas, throttling per tenant/key</span><span class="tag">API versioning + deprecation</span><span class="tag">Request/response validation (OpenAPI)</span></div>
+<div class="ml"><b>Key entities:</b> api_key, route, webhook_out, rate_bucket.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/admin/api-keys; GET /v1/meta/openapi; POST /v1/admin/webhooks; GET /v1/admin/usage.</div>
+<div class="ml"><b>Top rules:</b> GW-001 GW-002 GW-003 GW-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>api.key.created, api.webhook.failed, api.ratelimit.exceeded</code></div>
+</div><div class="mcard">
+<div class="mh">24 · Integration Layer &amp; Event Bus</div>
+<div class="mr">Replaces: Internal Kafka/Redis event bus + connector framework (optional external bridges).</div>
+<div class="ml"><b>Purpose.</b> The nervous system: the internal event bus that lets every engine publish/subscribe asynchronously, plus a connector framework for optional external bridges (Slack, Teams, WhatsApp, calendar, model providers) — the plumbing that makes 26 modules one platform while keeping them decoupled.</div>
+<div class="pillrow"><span class="tag">Internal event bus (publish/subscribe, durable, ordered per key)</span><span class="tag">Event schema registry + versioning</span><span class="tag">Connector framework for optional externals (Slack/Teams/WhatsApp/Calendar/LLM providers)</span><span class="tag">Retry, dead-letter, replay</span><span class="tag">Idempotency &amp; exactly-once-ish delivery semantics</span></div>
+<div class="ml"><b>Key entities:</b> event, subscription, dead_letter, connector.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/events:publish; POST /v1/subscriptions; GET /v1/events/dlq; POST /v1/events/dlq/{id}:replay.</div>
+<div class="ml"><b>Top rules:</b> INT-BUS-001 INT-BUS-002 INT-BUS-003 INT-BUS-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>bus.dlq.added, connector.status.changed</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 6 · Module specifications (9/9)</div>
+<h2>25–26 · Admin Console &amp; User/Permission Management → AI Copilot</h2>
+<div class="mcard">
+<div class="mh">25 · Admin Console &amp; User/Permission Management</div>
+<div class="mr">Replaces: HubSpot settings + super-admin + billing/quotas + RBAC.</div>
+<div class="ml"><b>Purpose.</b> The control plane: organizations/tenants, teams, users, roles &amp; permissions (RBAC), API keys, domains, SMTP, integrations, branding, audit logs, usage, billing, quotas, AI credits, monitoring and health — everything an operator configures and governs, with full multi-tenancy.</div>
+<div class="pillrow"><span class="tag">Tenant/org management (multi-tenancy)</span><span class="tag">Users, teams, roles, granular permissions (RBAC)</span><span class="tag">API keys, domains, SMTP, integrations, branding</span><span class="tag">Usage, billing, quotas, AI credits, rate limits</span><span class="tag">Audit logs (platform-wide), monitoring, health, feature flags</span></div>
+<div class="ml"><b>Key entities:</b> tenant, user, team, role, quota, audit_entry.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/admin/tenants; POST /v1/admin/users:invite; POST /v1/admin/roles; GET /v1/admin/usage.</div>
+<div class="ml"><b>Top rules:</b> ADM-001 ADM-002 ADM-003 ADM-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>tenant.provisioned, user.invited, role.changed, quota.exhausted</code></div>
+</div><div class="mcard">
+<div class="mh">26 · AI Copilot</div>
+<div class="mr">Replaces: HubSpot ChatSpot / Breeze — conversational interface over the whole platform.</div>
+<div class="ml"><b>Purpose.</b> The natural-language interface to everything: &#x27;Which banks should I call today?&#x27;, &#x27;How do I approach Riyad Bank?&#x27;, &#x27;Draft outreach to the Al Rajhi CDO&#x27;, &#x27;What changed on my accounts this week?&#x27; — a governed agentic copilot that queries the graph, invokes engines (with permission + compliance gates), and returns answers, briefs and actions. The realization of the zero-human-intervention vision as an assistant surface.</div>
+<div class="pillrow"><span class="tag">Conversational NL query over graph/analytics</span><span class="tag">Action invocation (create task, enroll, generate draft, move deal) via tool-calling</span><span class="tag">Grounded answers with citations to intelligence/records</span><span class="tag">Guardrails: permission-aware, compliance-gated, confidence-qualified</span><span class="tag">Proactive suggestions (today&#x27;s priorities, risks)</span></div>
+<div class="ml"><b>Key entities:</b> copilot_session, copilot_turn, tool_binding.</div>
+<div class="ml"><b>Signature APIs:</b> POST /v1/copilot/ask; GET /v1/copilot/sessions/{id}; GET /v1/copilot/suggestions; GET /v1/copilot/tools.</div>
+<div class="ml"><b>Top rules:</b> COP-001 COP-002 COP-003 COP-004 — full set in the module spec.</div>
+<div class="ml"><b>Publishes:</b> <code>copilot.action.taken, copilot.query.answered</code></div>
+</div>
+<div class="foot">ABM Enterprise Platform · Module specs · full detail in the markdown repo</div></div><div class="page"><div class="kicker">Section 7</div><h2>5-day AI-assisted build plan</h2><h3>Day 1 — Foundation</h3><p>Core Platform (01): multi-tenancy, base entities, shared kernel, config, RBAC scaffolding. Database (17): global schema + migrations. Integration Layer (24): event bus + schema registry. API Gateway (23) skeleton. Admin (25) tenants/users/roles. Outcome: a multi-tenant, event-driven skeleton with auth.</p><h3>Day 2 — Data &amp; Intelligence</h3><p>Signal Engine (02): raw_capture, SIG-NEWS worker, filter, decay. Enrichment (03) waterfall + verify. Contact (04) + Account (05) + Scoring (18): the account-first model + 0-100 score + Effective-Opportunity. Intelligence (01) + EPIS + reasoning streams. Outcome: signals flow to scored, tiered accounts with briefs.</p><h3>Day 3 — CRM &amp; Marketing replicas</h3><p>CRM Engine (06): objects, properties, deals, activities, committee, graph, views, merge, audit, timeline. Marketing (07) + Journey (08) + Campaign (09): audiences, templates, campaigns, journeys. Email Delivery (11): send + event pipeline. Outcome: HubSpot + Mailchimp replicas operational end-to-end.</p><h3>Day 4 — Automation &amp; AI</h3><p>Rules Engine (15): no-code IF/THEN. Workflow Engine (16): node automation. AI Personalization (10): 7-agent chain + QC. Landing/Forms (13) + Assets (14). LinkedIn (12) behind circuit breaker. Notification (21). Outcome: autonomous orchestration with AI content + compliance gates.</p><h3>Day 5 — Insight, Copilot, Hardening</h3><p>Analytics (17) + Attribution (22) + Reporting (20) + exec briefs. AI Copilot (26). Pipeline (19) forecasting. Cross-cutting hardening: RBAC matrix, quotas, i18n, KSA calendar, load tests, acceptance suites. Outcome: full platform with copilot, analytics, and the feedback loop closed.</p>
+<div class="callout"><b>Guardrails:</b> never delete production data; always migrate; inspect before modifying; compliance gates built in from Day 1; every module ships with its acceptance suite.</div>
+<div class="foot">ABM Enterprise Platform · Build plan</div></div><div class="page"><div class="kicker">Reference</div><h2>How the blueprint &amp; repo fit together</h2>
+<p>This blueprint is the spine. The companion repository <code>ABM_Enterprise_Platform/</code> contains 26 module specifications across 21 domain folders, each following an 18-section template (purpose, scope, personas, entities/schema, API contracts, workflows, state machine, events, business rules, RBAC, validations, errors, integrations, testing, acceptance criteria, edge cases, implementation checklist, future).</p>
+<p>An AI-assisted engineering team should build folder-by-folder following the 5-day plan, using each module's implementation checklist and acceptance criteria as the definition of done.</p>
+<div class="callout">This redesign turns the ABM engine from an execution playbook that depends on HubSpot/Mailchimp/Apollo/Smartlead/n8n into a single enterprise platform that owns every layer natively — the precondition for true zero-human-intervention operation.</div>
+<div class="foot">ABM Enterprise Platform · 16 July 2026</div></div></body></html>

@@ -242,4 +242,8 @@ def learn_from_campaign(db: Session, campaign_id: str) -> dict:
         evs = ev_by_msg.get(m.id, set())
         v["opens"] += 1 if "open" in evs else 0
         v["clicks"] += 1 if "click" in evs else 0
-        v["replies"] += 1 if m.status == "replied"
+        v["replies"] += 1 if m.status == "replied" else 0
+    for name, stats in per.items():
+        record_outcome(db, "email", f"campaign:{campaign_id}:variant:{name}",
+                       label=name, **stats)
+    return per

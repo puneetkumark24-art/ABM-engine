@@ -31,7 +31,7 @@ sys.path.insert(0, _ROOT)
 from database import Base, engine, SessionLocal  # noqa: E402
 import models  # noqa: E402
 try:
-    import models_ext, models_p10, models_p11  # noqa: E402,F401  (complete metadata for Postgres drop/create)
+    import models_ext, models_p10, models_p11, models_p12  # noqa: E402,F401  (complete metadata for Postgres drop/create)
 except ImportError:
     pass
 from sequences import engine as seq  # noqa: E402
@@ -151,4 +151,13 @@ def run():
     passed = sum(1 for _, ok in _results if ok)
     total = len(_results)
     print(f"\n{passed}/{total} checks passed")
-    return passed ==
+    return passed == total
+
+
+if __name__ == "__main__":
+    sys.exit(0 if run() else 1)
+
+
+def test_sequence_engine():
+    """pytest entry point."""
+    assert run()

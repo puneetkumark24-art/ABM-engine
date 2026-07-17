@@ -16,7 +16,7 @@ from database import Base, engine, SessionLocal  # noqa: E402
 import models  # noqa: E402
 import models_ext as mx  # noqa: E402
 import models_p10  # noqa: E402,F401  (registers Phase-10 tables so drop_all/create_all cover FKs)
-import models_p11  # noqa: E402,F401  (Phase-11 tables — keep metadata complete for Postgres)
+import models_p11, models_p12  # noqa: E402,F401  (Phase-11/12 tables — keep metadata complete for Postgres)
 from abm_platform.services import (  # noqa: E402
     enrichment, marketing, campaign, ai_gen, delivery, linkedin, landing,
     assets, rules, workflow, analytics, reporting, notification, attribution,
@@ -283,4 +283,14 @@ def run():
     check("26 call-list answers (due or HOT fallback)", ans3.intent == "call_list")
 
     passed = sum(1 for _, ok in _results if ok)
-    total = len
+    total = len(_results)
+    print(f"\n{passed}/{total} checks passed")
+    return passed == total
+
+
+if __name__ == "__main__":
+    sys.exit(0 if run() else 1)
+
+
+def test_platform_services():
+    assert run()

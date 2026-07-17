@@ -15,7 +15,7 @@ from database import Base, engine, SessionLocal  # noqa: E402
 import models  # noqa: E402
 import models_ext as mx  # noqa: E402
 import models_p10 as p10  # noqa: E402
-import models_p11  # noqa: E402,F401  (metadata completeness for Postgres drop/create)
+import models_p11, models_p12  # noqa: E402,F401  (metadata completeness for Postgres drop/create)
 from sequences import engine as seq_engine  # noqa: E402
 from abm_platform.services import (  # noqa: E402
     engagement, pipeline, merge, timeline, orchestrator, delivery, marketing,
@@ -175,4 +175,9 @@ def run():
     return passed == total
 
 
-if __name__ ==
+if __name__ == "__main__":
+    sys.exit(0 if run() else 1)
+
+
+def test_engine_e2e():
+    assert run()

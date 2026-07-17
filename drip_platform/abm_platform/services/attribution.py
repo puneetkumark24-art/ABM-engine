@@ -72,4 +72,5 @@ def campaign_credit(db: Session, result_id: str) -> dict[str, float]:
     for touch_id, frac in (res.credit or {}).items():
         t = db.get(mx.Touch, touch_id)
         key = (t.campaign_id if t and t.campaign_id else "unattributed")
-    
+        out[key] = round(out.get(key, 0.0) + frac, 6)
+    return out
