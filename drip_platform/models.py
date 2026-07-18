@@ -18,7 +18,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text, DateTime, ForeignKey,
+    Column, String, Integer, BigInteger, Float, Boolean, Text, DateTime, ForeignKey,
     JSON, UniqueConstraint, Index, LargeBinary
 )
 from sqlalchemy.orm import relationship
@@ -324,7 +324,8 @@ class Opportunity(Base):
     product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
     stage = Column(String, default="Identified")  # Identified..Won/Lost
     probability = Column(Integer, default=10)
-    estimated_value = Column(String)
+    estimated_value = Column(String)               # legacy free text (kept)
+    amount_minor = Column(BigInteger)              # Sprint 2: money-correct value (minor units)
     currency = Column(String, default="SAR")
     champion_id = Column(String(36), ForeignKey("persons.id"), nullable=True)
     next_step = Column(Text)
@@ -393,8 +394,10 @@ class Signal(Base):
     decay_category = Column(String, nullable=True)        # OPERATIONAL / TACTICAL / STRATEGIC / STRUCTURAL
     decay_expires_at = Column(DateTime, nullable=True)     # created_at + decay_category's half-life
     source_reliability = Column(Float, nullable=True)      # P2: populated from source_registry at capture time
+    content_hash = Column(String(64), nullable=True)       # S4: dedup key for idempotent collectors
 
-    __table_args__ = (Index("idx_signals_org", "org_id"), Index("idx_signals_type", "signal_type"))
+    __table_args__ = (Index("idx_signals_org", "org_id"), Index("idx_signals_type", "signal_type"),
+                      Index("idx_signals_hash", "content_hash"))
 
 
 # ─────────────────────────────────────────────────────────────

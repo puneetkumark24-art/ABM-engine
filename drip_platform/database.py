@@ -25,7 +25,11 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./drip_dev.db")
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, connect_args=connect_args, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+# expire_on_commit=False: keep attribute values loaded after commit so (a) objects
+# remain usable post-commit and (b) the audit trail can capture accurate
+# before-values on subsequent updates. Standard for service apps.
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False,
+                            expire_on_commit=False, future=True)
 Base = declarative_base()
 
 # Set by TenantMiddleware per request from the JWT; read by get_db to scope the

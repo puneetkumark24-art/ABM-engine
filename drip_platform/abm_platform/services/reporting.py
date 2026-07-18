@@ -14,6 +14,60 @@ def create_report(db: Session, name: str, definition: dict, viz: str = "table") 
     return r
 
 
+# ── Final wave: generic report builder (HubSpot custom-reports gap) ──
+_ENTITIES = {
+    "persons": lambda: models.Person,
+    "organizations": lambda: models.Organization,
+    "opportunities": lambda: models.Opportunity,
+    "signals": lambda: models.Signal,
+}
+
+
+def _row_matches(row, filters: list[dict]) -> bool:
+    for f in filters or []:
+        v = getattr(row, f["field"], None)
+        op, t = f.get("op", "eq"), f.get("value")
+        ok = ((op == "eq" and v == t) or (op == "neq" and v != t) or
+              (op == "contains" and t is not None and str(t).lower() in str(v or "").lower()) or
+              (op == "gt" and v is not None and t is not None and v > t) or
+              (op == "lt" and v is not None and t is not None and v < t) or
+              (op == "exists" and v not in (None, "")))
+        if not ok:
+            return False
+    return True
+
+
+def run_definition(db: Session, definition: dict) -> dict:
+    """Generic custom report: {entity, filters?, group_by?, metric: count|sum,
+    metric_field?}. Returns grouped rows ready for a table/bar viz."""
+    entity = definition.get("entity", "persons")
+    if entity not in _ENTITIES:
+        raise ValueError(f"entity must be one of {sorted(_ENTITIES)}")
+    model = _ENTITIES[entity]()
+    rows = [r for r in db.query(model).all()
+            if _row_matches(r, definition.get("filters"))]
+    group_by = definition.get("group_by")
+    metric = definition.get("metric", "count")
+    mfield = definition.get("metric_field")
+
+    def val(r):
+        if metric == "sum" and mfield:
+            return float(getattr(r, mfield, 0) or 0)
+        return 1.0
+
+    if group_by:
+        groups: dict = {}
+        for r in rows:
+            k = str(getattr(r, group_by, None))
+            groups[k] = groups.get(k, 0.0) + val(r)
+        data = [{"group": k, "value": round(v, 2)}
+                for k, v in sorted(groups.items(), key=lambda kv: -kv[1])]
+    else:
+        data = [{"group": "all", "value": round(sum(val(r) for r in rows), 2)}]
+    return {"entity": entity, "metric": metric, "metric_field": mfield,
+            "group_by": group_by, "row_count": len(rows), "data": data}
+
+
 def render(db: Session, report_id: str) -> dict:
     r = db.get(mx.ReportDef, report_id)
     if r is None:

@@ -134,6 +134,18 @@ def run_webhook():
 
 
 def run():
+    # SAFETY GUARD: the RLS half creates roles/policies and writes probe rows.
+    # It must ONLY run on a disposable test database, never a production DB.
+    # Set DRIP_ALLOW_PG_TESTS=1 explicitly when DATABASE_URL is a scratch PG.
+    url = os.environ.get("DATABASE_URL", "")
+    if url.startswith("postgresql") and not os.environ.get("DRIP_ALLOW_PG_TESTS"):
+        print("SKIP - PG tenancy suite guarded: set DRIP_ALLOW_PG_TESTS=1 on a "
+              "DISPOSABLE test database (never your production drip DB).")
+        run_auth()
+        run_webhook()
+        passed = sum(1 for _, ok in _results if ok); total = len(_results)
+        print(f"\n{passed}/{total} checks passed  [DB: guarded — auth/webhook only]")
+        return passed == total
     run_rls()
     run_auth()
     run_webhook()

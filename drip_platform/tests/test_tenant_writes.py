@@ -78,6 +78,9 @@ def run_writes():
 
 
 def run_middleware():
+    # pin enforcement OFF for the first half regardless of deployment .env
+    # (the local-network .env sets AUTH_ENFORCED=true, which dotenv loads)
+    os.environ["AUTH_ENFORCED"] = "false"
     from starlette.testclient import TestClient
     from starlette.applications import Starlette
     from starlette.responses import JSONResponse
@@ -126,6 +129,15 @@ def run_middleware():
 
 
 def run():
+    # SAFETY GUARD: write-path RLS probes belong on a disposable test DB only.
+    url = os.environ.get("DATABASE_URL", "")
+    if url.startswith("postgresql") and not os.environ.get("DRIP_ALLOW_PG_TESTS"):
+        print("SKIP - PG tenant-write suite guarded: set DRIP_ALLOW_PG_TESTS=1 on a "
+              "DISPOSABLE test database (never your production drip DB).")
+        run_middleware()
+        passed = sum(1 for _, ok in _results if ok); total = len(_results)
+        print(f"\n{passed}/{total} checks passed  [DB: guarded — middleware only]")
+        return passed == total
     run_writes()
     run_middleware()
     passed = sum(1 for _, ok in _results if ok); total = len(_results)

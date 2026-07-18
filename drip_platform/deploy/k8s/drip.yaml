@@ -1,0 +1,114 @@
+# Kubernetes manifests — DRIP platform (Sprint 1, S1-05).
+# API + worker(HPA) + scheduler, with liveness/readiness probes wired to the
+# observability endpoints. Postgres/Redis are expected as managed services
+# (RDS/ElastiCache) referenced by the drip-secrets Secret; for in-cluster dev,
+# add StatefulSets separately.
+apiVersion: v1
+kind: Namespace
+metadata: { name: drip }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: drip-config, namespace: drip }
+data:
+  AUTH_ENFORCED: "true"
+  SCHEDULER_TIMEZONE: "Asia/Riyadh"
+  RESPECT_SEND_WINDOW: "true"
+  LOG_LEVEL: "INFO"
+  ENABLE_SES_TRANSPORT: "false"
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: drip-secrets, namespace: drip }
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql+psycopg2://app_rw:REPLACE@db-host:5432/drip"
+  MIGRATE_DATABASE_URL: "postgresql+psycopg2://postgres:REPLACE@db-host:5432/drip"
+  REDIS_URL: "redis://redis-host:6379/0"
+  JWT_SECRET: "REPLACE_WITH_VAULT_SECRET"
+  APP_DB_PASSWORD: "REPLACE"
+  POSTGRES_PASSWORD: "REPLACE"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: drip-api, namespace: drip }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: drip-api } }
+  template:
+    metadata: { labels: { app: drip-api } }
+    spec:
+      containers:
+        - name: api
+          image: REGISTRY/drip:latest
+          command: ["bash", "deploy/entrypoint_api.sh"]
+          ports: [ { containerPort: 8000 } ]
+          envFrom:
+            - configMapRef: { name: drip-config }
+            - secretRef: { name: drip-secrets }
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8000 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "1", memory: "1Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: drip-api, namespace: drip }
+spec:
+  selector: { app: drip-api }
+  ports: [ { port: 80, targetPort: 8000 } ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: drip-worker, namespace: drip }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: drip-worker } }
+  template:
+    metadata: { labels: { app: drip-worker } }
+    spec:
+      containers:
+        - name: worker
+          image: REGISTRY/drip:latest
+          command: ["python", "deploy/worker_main.py"]
+          envFrom:
+            - configMapRef: { name: drip-config }
+            - secretRef: { name: drip-secrets }
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "1", memory: "1Gi" }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: drip-worker-hpa, namespace: drip }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: drip-worker }
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: drip-scheduler, namespace: drip }
+spec:
+  replicas: 1          # single leader
+  selector: { matchLabels: { app: drip-scheduler } }
+  template:
+    metadata: { labels: { app: drip-scheduler } }
+    spec:
+      containers:
+        - name: scheduler
+          image: REGISTRY/drip:latest
+          command: ["python", "deploy/scheduler_main.py"]
+          envFrom:
+            - configMapRef: { name: drip-config }
+            - secretRef: { name: drip-secrets }

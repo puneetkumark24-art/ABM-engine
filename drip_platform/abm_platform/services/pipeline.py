@@ -98,7 +98,10 @@ _NUM_RE = re.compile(r"[\d.]+")
 
 
 def _amount(opp: "models.Opportunity") -> float:
-    """estimated_value is free text ('SAR 2.5M', '500k'); parse best-effort."""
+    """Prefer the money-correct amount_minor (Sprint 2); fall back to parsing
+    the legacy free-text estimated_value only when amount_minor is unset."""
+    if getattr(opp, "amount_minor", None) is not None:
+        return opp.amount_minor / 100.0
     if not opp.estimated_value:
         return 0.0
     txt = opp.estimated_value.lower().replace(",", "")

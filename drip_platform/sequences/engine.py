@@ -90,7 +90,11 @@ def ensure_default_sequence(db: Session) -> "models.SequenceDefinition":
         db.add(seq)
         db.flush()  # get seq.id
 
-    existing_steps = {s.step_number for s in seq.steps}
+    # query steps directly (not via the ORM relationship, which may be stale
+    # under expire_on_commit=False) so we never double-insert on re-run.
+    existing_steps = {row[0] for row in
+                      db.query(models.SequenceStep.step_number)
+                      .filter(models.SequenceStep.sequence_id == seq.id).all()}
     for n in range(1, DEFAULT_STEPS + 1):
         if n in existing_steps:
             continue

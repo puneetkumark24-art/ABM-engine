@@ -43,6 +43,50 @@ from flow_map_pdf import render_flow_map_pdf
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB — dossiers can run large (scans, decks)
 
+# ── Final wave: the dashboard was the last unauthenticated surface (audit
+# risk). Gate every page behind the same admin password as the API. ──
+import os as _os
+from flask import session as _session
+app.secret_key = _os.environ.get("JWT_SECRET", "drip-dev-flask-secret")
+_DASH_PW = _os.environ.get("DASH_PASSWORD") or _os.environ.get("ADMIN_PASSWORD", "")
+
+_LOGIN_PAGE = """<!DOCTYPE html><html><head><title>DRIP BD Dashboard</title>
+<style>body{font-family:Inter,system-ui,sans-serif;background:#0d1512;display:flex;
+align-items:center;justify-content:center;height:100vh;margin:0}
+form{background:#182821;padding:34px;border-radius:14px;border:1px solid #24382f;width:300px}
+h1{color:#e6efe9;font-size:17px;margin:0 0 16px}
+input{width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #24382f;
+background:#0d1512;color:#e6efe9;margin-bottom:10px}
+button{width:100%;padding:10px;border:0;border-radius:8px;background:#2f9e6e;color:#fff;cursor:pointer}
+p{color:#c65454;font-size:13px}</style></head><body>
+<form method="post"><h1>&#9670; DRIP BD Dashboard</h1>
+<input type="password" name="password" placeholder="password" autofocus>
+<button>Sign in</button>%ERR%</form></body></html>"""
+
+
+@app.route("/dash-login", methods=["GET", "POST"])
+def dash_login():
+    from flask import request as _rq, redirect as _rd
+    if _rq.method == "POST":
+        import hmac as _hmac
+        if _DASH_PW and _hmac.compare_digest(_rq.form.get("password", ""), _DASH_PW):
+            _session["dash_auth"] = True
+            return _rd("/")
+        return _LOGIN_PAGE.replace("%ERR%", "<p>Wrong password</p>")
+    return _LOGIN_PAGE.replace("%ERR%", "")
+
+
+@app.before_request
+def _require_dash_auth():
+    from flask import request as _rq, redirect as _rd
+    if not _DASH_PW:          # no password configured (dev) — open, as before
+        return None
+    if _rq.path.startswith(("/dash-login", "/static")):
+        return None
+    if not _session.get("dash_auth"):
+        return _rd("/dash-login")
+    return None
+
 PAGE_SIZE = 100
 URGENCY_TO_RELEVANCE = {"CRITICAL": 1.0, "HIGH": 0.9, "MEDIUM": 0.6, "LOW": 0.3}
 TIER_TO_PRIORITY_KEY = {"Tier 1": "tier_1", "Tier 2": "tier_2", "Tier 3": "tier_3"}

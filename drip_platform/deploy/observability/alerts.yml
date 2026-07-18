@@ -1,0 +1,58 @@
+# Sprint 10 — Prometheus alerting rules for DRIP.
+# Backed by the /metrics endpoint registered in observability.py (request counts,
+# latency summary, in-flight, plus /health/ready for the DB probe).
+groups:
+  - name: drip-availability
+    rules:
+      - alert: DripApiDown
+        expr: up{job="drip-api"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "DRIP API instance down"
+          runbook: "docs/runbooks/operations.md#api-down"
+
+      - alert: DripReadinessFailing
+        expr: probe_success{job="drip-ready"} == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "DRIP /health/ready failing (DB unreachable)"
+          runbook: "docs/runbooks/operations.md#db-unreachable"
+
+  - name: drip-latency-errors
+    rules:
+      - alert: DripHighErrorRate
+        expr: sum(rate(drip_requests_total{status=~"5.."}[5m]))
+              / sum(rate(drip_requests_total[5m])) > 0.02
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "5xx error ratio > 2% (SLO burn)"
+          runbook: "docs/runbooks/operations.md#elevated-errors"
+
+      - alert: DripHighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(drip_request_latency_seconds_bucket[5m])) by (le)) > 0.5
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "API p95 latency > 500ms"
+          runbook: "docs/runbooks/operations.md#latency"
+
+  - name: drip-async
+    rules:
+      - alert: DripJobQueueBacklog
+        expr: drip_jobs_pending > 5000
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Durable job queue backlog > 5000"
+          runbook: "docs/runbooks/operations.md#worker-backlog"
+
+      - alert: DripWebhookDeadLetters
+        expr: increase(drip_webhook_dead_letters_total[1h]) > 50
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Outbound webhook dead-letters rising"
+          runbook: "docs/runbooks/operations.md#webhook-dead-letters"
