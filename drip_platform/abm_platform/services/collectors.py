@@ -52,9 +52,12 @@ def seed_default_sources(db: Session) -> int:
 
 
 def add_source(db: Session, name: str, url: str, kind: str = "rss",
-               signal_type: str = "news", interval_minutes: int = 60) -> mc.SignalSource:
+               signal_type: str = "news", interval_minutes: int = 60,
+               org_id: str | None = None) -> mc.SignalSource:
+    """org_id set => a dedicated source for one bank/vendor: every fetched item
+    is attached to that org directly (no name-matching needed)."""
     src = mc.SignalSource(name=name, url=url, kind=kind, signal_type=signal_type,
-                          interval_minutes=interval_minutes)
+                          interval_minutes=interval_minutes, org_id=org_id)
     db.add(src); db.commit()
     return src
 
@@ -114,7 +117,8 @@ def run_source(db: Session, source: mc.SignalSource, fetcher=None,
         items = parse_feed(raw)
         idx = _org_index(db)
         for it in items[:100]:
-            org_id = match_org(it["title"], it["summary"], idx)
+            # dedicated per-bank source: attach every item to that org directly
+            org_id = source.org_id or match_org(it["title"], it["summary"], idx)
             if org_id:
                 matched += 1
             sig, was_created = abm_intel.ingest_signal(
@@ -154,7 +158,7 @@ def run_due(db: Session, fetcher=None, now: datetime | None = None) -> dict:
 
 def sources_health(db: Session) -> list[dict]:
     return [{"id": s.id, "name": s.name, "url": s.url, "type": s.signal_type,
-             "enabled": s.enabled, "errors": s.error_count,
+             "org_id": s.org_id, "enabled": s.enabled, "errors": s.error_count,
              "items_ingested": s.items_ingested, "last_run": str(s.last_run_at or ""),
              "last_status": s.last_status}
             for s in db.query(mc.SignalSource).all()]

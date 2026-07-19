@@ -192,14 +192,34 @@ def import_persons(req: PersonRows, db: Session = Depends(get_db)):
 
 
 @router.get("/export/persons", response_class=PlainTextResponse)
-def export_persons(db: Session = Depends(get_db)):
-    cols = ["id", "full_name", "current_title", "primary_email", "phone", "tier",
-            "current_org_id", "is_active"]
+def export_persons(org_id: Optional[str] = None, tier: Optional[str] = None,
+                   indian: Optional[str] = None, seniority: Optional[str] = None,
+                   q: Optional[str] = None, db: Session = Depends(get_db)):
+    """Scoped export: all contacts, one bank's, a priority tier, Indian-origin
+    only, a seniority level, or a text match — combinable."""
+    query = db.query(models.Person)
+    if org_id:
+        query = query.filter(models.Person.current_org_id == org_id)
+    if tier:
+        query = query.filter(models.Person.priority_tier == tier)
+    if indian == "1":
+        query = query.filter(models.Person.is_indian_origin == True)  # noqa: E712
+    if seniority:
+        query = query.filter(models.Person.seniority_level == seniority)
+    if q:
+        from sqlalchemy import or_ as _or
+        query = query.filter(_or(models.Person.full_name.ilike(f"%{q}%"),
+                                 models.Person.current_title.ilike(f"%{q}%")))
+    org_name = {o.id: o.canonical_name for o in db.query(models.Organization).all()}
+    cols = ["full_name", "current_title", "seniority_level", "priority_tier",
+            "is_indian_origin", "primary_email", "phone", "mobile", "linkedin_url",
+            "next_step", "last_activity_summary", "is_active"]
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(cols)
-    for p in db.query(models.Person).all():
-        w.writerow([getattr(p, c, "") for c in cols])
+    w.writerow(["bank"] + cols)
+    for p in query.all():
+        w.writerow([org_name.get(p.current_org_id, "")] +
+                   [getattr(p, c, "") for c in cols])
     return PlainTextResponse(buf.getvalue(), media_type="text/csv",
                              headers={"Content-Disposition": "attachment; filename=contacts.csv"})
 

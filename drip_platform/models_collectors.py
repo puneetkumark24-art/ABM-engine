@@ -23,6 +23,7 @@ class SignalSource(Base):
     kind = Column(String(20), default="rss")          # rss | atom
     url = Column(String(600), nullable=False)
     signal_type = Column(String(40), default="news")  # news | regulatory | hiring | tender
+    org_id = Column(String(36), index=True)           # set => every item maps to this bank/vendor
     interval_minutes = Column(Integer, default=60)
     enabled = Column(Boolean, default=True)
     last_run_at = Column(DateTime)

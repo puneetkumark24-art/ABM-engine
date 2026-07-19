@@ -193,6 +193,28 @@ def new_contact(org_id: str, req: ContactNewReq, db: Session = Depends(get_db)):
     return {"id": p.id, "full_name": p.full_name}
 
 
+# ── FAST contact upload per bank (the original DRIP importer) ──
+@router.post("/banks/{org_id}/contacts/upload")
+async def upload_contacts(org_id: str, file: UploadFile = File(...),
+                          db: Session = Depends(get_db)):
+    """Excel (.xlsx/.xls) or CSV of contacts → the legacy high-speed upserter
+    (smart header detection, LinkedIn-export aware, dedup by name+org)."""
+    org = db.get(models.Organization, org_id)
+    if org is None:
+        raise HTTPException(status_code=404, detail="bank not found")
+    data = await file.read()
+    try:
+        from etl.import_incoming import import_contacts_from_bytes
+        result = import_contacts_from_bytes(db, data, file.filename,
+                                            institution_hint=org.canonical_name)
+        db.commit()
+        return {"filename": file.filename, **{k: v for k, v in result.items()
+                                              if not callable(v)}}
+    except Exception as e:  # noqa: BLE001
+        db.rollback()
+        raise HTTPException(status_code=422, detail=f"import failed: {str(e)[:200]}")
+
+
 # ── signals per bank: create / edit / toggle ─────────────────
 class SignalNewReq(BaseModel):
     title: str
@@ -303,7 +325,7 @@ def initiatives(db: Session = Depends(get_db)):
     org_name = {o.id: o.canonical_name for o in db.query(models.Organization).all()}
     rows = (db.query(models.Signal).order_by(models.Signal.created_at.desc())
             .limit(200).all())
-    return [{"id": s.id, "title": s.title, "type": s.signal_type,
+    return [{"id": s.id, "title": s.title, "url": s.url, "type": s.signal_type,
              "urgency": s.urgency, "bank": org_name.get(s.org_id),
              "deadline": str(s.deadline or ""), "value": s.estimated_value,
              "is_read": bool(s.is_read), "is_actioned": bool(s.is_actioned)}
@@ -388,6 +410,55 @@ def person_timeline_api(person_id: str, db: Session = Depends(get_db)):
         return []
 
 
+@router.get("/orgs/{org_id}/timeline")
+def org_timeline_api(org_id: str, db: Session = Depends(get_db)):
+    from abm_platform.services import timeline
+    try:
+        return timeline.org_timeline(db, org_id)
+    except Exception:  # noqa: BLE001
+        return []
+
+
+# ── manual activity logging (LinkedIn touch, event, seminar, call, note…) ──
+ACTIVITY_TYPES = ["linkedin", "event", "seminar", "meeting", "call", "email",
+                  "whatsapp", "note", "site_visit", "webinar"]
+
+
+class ActivityReq(BaseModel):
+    activity_type: str = "note"
+    notes: str
+    outcome: Optional[str] = None
+    next_action: Optional[str] = None
+    owner: str = "Puneet"
+    person_id: Optional[str] = None    # for org-level logging with a person
+    org_id: Optional[str] = None       # for person-level logging with an org
+
+
+@router.post("/persons/{person_id}/activities", status_code=201)
+def log_person_activity(person_id: str, req: ActivityReq, db: Session = Depends(get_db)):
+    p = db.get(models.Person, person_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="person not found")
+    a = models.ActivityLog(person_id=person_id, org_id=req.org_id or p.current_org_id,
+                           activity_type=req.activity_type, notes=req.notes,
+                           outcome=req.outcome, next_action=req.next_action,
+                           owner=req.owner, timestamp=datetime.utcnow())
+    db.add(a); db.commit()
+    return {"id": a.id, "activity_type": a.activity_type}
+
+
+@router.post("/orgs/{org_id}/activities", status_code=201)
+def log_org_activity(org_id: str, req: ActivityReq, db: Session = Depends(get_db)):
+    if db.get(models.Organization, org_id) is None:
+        raise HTTPException(status_code=404, detail="organization not found")
+    a = models.ActivityLog(org_id=org_id, person_id=req.person_id,
+                           activity_type=req.activity_type, notes=req.notes,
+                           outcome=req.outcome, next_action=req.next_action,
+                           owner=req.owner, timestamp=datetime.utcnow())
+    db.add(a); db.commit()
+    return {"id": a.id, "activity_type": a.activity_type}
+
+
 # ── deals (HubSpot-style CRUD + kanban stage moves) ──────────
 DEAL_STAGES = ["Identified", "Qualified", "Proposal", "Negotiation", "Won", "Lost"]
 
@@ -450,7 +521,8 @@ def deals_board(db: Session = Depends(get_db)):
     cols = {s: [] for s in DEAL_STAGES}
     for o in db.query(models.Opportunity).all():
         st = o.stage if o.stage in DEAL_STAGES else "Identified"
-        cols[st].append({"id": o.id, "bank": org_name.get(o.org_id, "?"),
+        cols[st].append({"id": o.id, "org_id": o.org_id,
+                         "bank": org_name.get(o.org_id, "?"),
                          "amount_sar": (o.amount_minor or 0) / 100,
                          "next_step": o.next_step, "notes": o.notes})
     totals = {s: sum(d["amount_sar"] for d in cols[s]) for s in DEAL_STAGES}
@@ -460,8 +532,9 @@ def deals_board(db: Session = Depends(get_db)):
 # ── campaigns (Mailchimp-style build → audience → send → report) ──
 class AudienceReq(BaseModel):
     name: str
-    segment_id: Optional[str] = None       # build from a saved segment
+    segment_id: Optional[str] = None        # build from a saved segment
     person_ids: Optional[list[str]] = None  # or explicit people
+    builtin: Optional[str] = None           # all|tier1|tier2|tier3|indian|c_suite|bank:<org_id>
 
 
 @mkt.post("/mkt/audiences", status_code=201)
@@ -471,8 +544,45 @@ def create_audience(req: AudienceReq, db: Session = Depends(get_db)):
     pids = list(req.person_ids or [])
     if req.segment_id:
         pids += [p.id for p in segsvc.evaluate(db, req.segment_id)]
-    n = marketing.add_members(db, a.id, pids) if pids else 0
+    if req.builtin:
+        q = db.query(models.Person).filter(models.Person.is_active == True)  # noqa: E712
+        b = req.builtin
+        if b == "tier1":
+            q = q.filter(models.Person.priority_tier == "1")
+        elif b == "tier2":
+            q = q.filter(models.Person.priority_tier == "2")
+        elif b == "tier3":
+            q = q.filter(models.Person.priority_tier == "3")
+        elif b == "indian":
+            q = q.filter(models.Person.is_indian_origin == True)  # noqa: E712
+        elif b == "c_suite":
+            q = q.filter(models.Person.seniority_level == "c_suite")
+        elif b.startswith("bank:"):
+            q = q.filter(models.Person.current_org_id == b.split(":", 1)[1])
+        elif b != "all":
+            raise HTTPException(status_code=422, detail=f"unknown builtin '{b}'")
+        pids += [p.id for p in q.all()]
+    n = marketing.add_members(db, a.id, list(dict.fromkeys(pids))) if pids else 0
     return {"id": a.id, "name": a.name, "members": n}
+
+
+@mkt.get("/mkt/campaigns/{campaign_id}/messages")
+def campaign_messages(campaign_id: str, db: Session = Depends(get_db)):
+    """Recipient-level view for the campaign detail page."""
+    import models_ext as mx
+    person_name = {p.id: p.full_name for p in db.query(models.Person).all()}
+    rows = (db.query(mx.EmailMessage).filter_by(campaign_id=campaign_id)
+            .limit(500).all())
+    msg_ids = {m.id for m in rows}
+    events: dict[str, list] = {}
+    if msg_ids:
+        for e in db.query(mx.DeliveryEvent).all():
+            if e.message_id in msg_ids:
+                events.setdefault(e.message_id, []).append(e.event_type)
+    return [{"id": m.id, "to": m.to_email,
+             "person": person_name.get(m.person_id, ""),
+             "variant": m.variant, "status": m.status,
+             "events": events.get(m.id, [])} for m in rows]
 
 
 @mkt.get("/mkt/segments-brief")

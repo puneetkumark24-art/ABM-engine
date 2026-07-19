@@ -27,9 +27,10 @@ body{background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:h
 /* ── sidebar ── */
 #side{width:218px;min-width:218px;background:var(--panel);border-inline-end:1px solid var(--line);
 display:flex;flex-direction:column;overflow-y:auto}
-#side .logo{padding:16px 18px;font-weight:700;font-size:16px;border-bottom:1px solid var(--line)}
+#side .logo{padding:16px 18px;font-weight:700;font-size:16px;border-bottom:1px solid var(--line);cursor:pointer}
+#side .logo:hover{background:var(--card)}
 #side .logo span{color:var(--gold)}
-#side .grp{padding:12px 18px 4px;font-size:10.5px;letter-spacing:.09em;color:var(--dim);text-transform:uppercase}
+#side .grp{padding:14px 18px 5px;font-size:13.5px;font-weight:700;letter-spacing:.05em;color:var(--gold);text-transform:uppercase;border-top:1px solid var(--line);margin-top:4px}
 #side a{display:block;padding:7px 18px;color:var(--dim);text-decoration:none;font-size:13.5px;border-inline-start:2px solid transparent}
 #side a.on{color:var(--text);background:var(--card);border-inline-start-color:var(--gold)}
 #side a:hover{color:var(--text)}
@@ -79,7 +80,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .hit{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13.5px}
 .hit:hover{background:var(--card)} .hit .k{color:var(--gold);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;margin-inline-end:8px}
 </style></head><body>
-<nav id="side"><div class="logo">◆ DRIP <span>OS</span></div><div id="navlinks"></div></nav>
+<nav id="side"><div class="logo" onclick="nav('dashboard')" title="Home">◆ DRIP <span>OS</span> <span style="font-size:11px;color:var(--dim)">⌂ home</span></div><div id="navlinks"></div></nav>
 <div id="main">
  <div id="top">
   <input id="gs" placeholder="Search everything…  (Ctrl+K)" onfocus="openPalette()" readonly>
@@ -102,9 +103,12 @@ const S={token:localStorage.getItem('drip_token')||null,
          account:JSON.parse(localStorage.getItem('drip_account')||'null')};
 function setAccount(id,name){S.account={id,name};localStorage.setItem('drip_account',JSON.stringify(S.account));ctx();}
 function clearAccount(){S.account=null;localStorage.removeItem('drip_account');ctx();route();}
-function ctx(){const b=document.getElementById('ctxbar');
- if(S.account){b.style.display='flex';document.getElementById('ctxname').textContent=S.account.name}
- else b.style.display='none';}
+function ctx(){
+ if(S.account)document.getElementById('ctxname').textContent=S.account.name;
+ // visibility is decided by route() (account pages only) — just refresh the name here
+ const h=(location.hash||'#/dashboard').slice(2).split('/');
+ const onAccount=(h[0]==='accounts'&&h[1])||h[0]==='committee';
+ document.getElementById('ctxbar').style.display=(onAccount&&S.account)?'flex':'none';}
 async function api(method,path,body){
   const h={'Content-Type':'application/json'};if(S.token)h['Authorization']='Bearer '+S.token;
   const r=await fetch(path,{method,headers:h,body:body?JSON.stringify(body):undefined});
@@ -133,6 +137,9 @@ function buildNav(){const el=document.getElementById('navlinks');
 function nav(r){location.hash='#/'+r;}
 function route(){const h=(location.hash||'#/dashboard').slice(2);const [name,id]=h.split('/');
  document.querySelectorAll('#side a').forEach(a=>a.classList.toggle('on',a.dataset.r===name));
+ // context bar ONLY on an account/contact page — hidden everywhere else
+ const onAccount=(name==='accounts'&&id)||name==='committee';
+ document.getElementById('ctxbar').style.display=(onAccount&&S.account)?'flex':'none';
  const el=document.getElementById('screen');el.innerHTML='<div class="muted">loading…</div>';
  (SCREENS[name]||SCREENS.dashboard)(el,id);}
 window.addEventListener('hashchange',route);
@@ -183,7 +190,7 @@ SCREENS.dashboard=async el=>{
   `<tr class="click" onclick='setAccount("${o.id}",${JSON.stringify(o.canonical_name)});nav("accounts/${o.id}")'><td>${esc(o.canonical_name)}</td></tr>`).join('')+'</table>';
  document.getElementById('dhot').innerHTML=d.hot_leads.length?d.hot_leads.map(h=>`<div>${h.person_id.slice(0,8)} — <span class="badge b-gold">${h.score}</span></div>`).join(''):'no engagement yet';};
 
-let _orgsCache=[],_bdOv=null;
+let _orgsCache=[],_bdOv=null,_bdOvErr=null;
 SCREENS.accounts=async(el,id)=>{
  if(id)return account360(el,id);
  el.innerHTML=`<h2>Accounts</h2><div class="sub">Financial institutions and their ecosystem — search, open, edit, tag, import.</div>
@@ -191,16 +198,25 @@ SCREENS.accounts=async(el,id)=>{
   <input id="aq" placeholder="🔍 Search banks & ecosystem…" oninput="aFilter()" style="max-width:280px">
   <button class="act" style="margin:0" onclick="aNewForm()">+ New organization</button>
   <button class="act gold" style="margin:0" onclick="csvUp('organizations')">⬆ Import CSV</button>
-  <a class="act" style="margin:0;text-decoration:none;display:inline-block" href="/export/organizations">⬇ Export CSV</a></div>
+  <button class="act" style="margin:0" onclick="dl('/export/organizations','banks.csv')">⬇ Export CSV</button></div>
   <div id="aform"></div>
   <h3 style="margin-top:8px">🏦 Banks</h3><div id="alist">loading…</div>
   <h3 style="margin-top:16px">🏛 Non-Bank Financial Institutions (insurance · payments · asset mgmt · finance)</h3><div id="nlist">—</div>
   <h3 style="margin-top:16px">🔗 Ecosystem (vendors · subsidiaries · fintechs · regulators)</h3><div id="elist">—</div></div>`;
  const [r,ov]=await Promise.all([api('GET','/organizations'),api('GET','/bd/overview')]);
- _orgsCache=r.ok?(r.data||[]):[];_bdOv=ov.ok?ov.data:null;aFilter();};
+ _orgsCache=r.ok?(r.data||[]):[];_bdOv=ov.ok?ov.data:null;_bdOvErr=ov.ok?null:ov.status;aFilter();};
 window.aFilter=()=>{
  const q=(document.getElementById('aq')?.value||'').toLowerCase();
  const pb=t=>t?`<span class="badge ${t==='Tier 1'?'b-gold':t==='Tier 2'?'b-blue':'b-dim'}">${esc(t)}</span>`:'<span class="badge b-dim">—</span>';
+ if(!_bdOv){
+  const msg=_bdOvErr===401?
+   '<span class="muted">Sign in required to load accounts — <button class="act gold" style="margin:0;padding:2px 10px" onclick="nav(\'settings\')">go to Settings to sign in</button>, then reopen this page.</span>':
+   '<span class="muted">Could not load accounts (server error'+(_bdOvErr?': '+_bdOvErr:'')+'). <button class="act" style="margin:0;padding:2px 10px" onclick="SCREENS.accounts(document.getElementById(\'screen\'))">retry</button></span>';
+  document.getElementById('alist').innerHTML=msg;
+  document.getElementById('nlist').innerHTML=msg;
+  document.getElementById('elist').innerHTML=msg;
+  return;
+ }
  if(_bdOv){
   const bankRow=b=>`<tr><td class="click" style="cursor:pointer" onclick='setAccount("${b.id}",${JSON.stringify(b.name)});nav("accounts/${b.id}")'><b>${esc(b.name)}</b>${b.name_ar?' <span class="muted">'+esc(b.name_ar)+'</span>':''} ${(b.tags||[]).slice(0,2).map(t=>'<span class="badge b-dim" style="margin:1px">'+esc(t.replace(/_/g,' '))+'</span>').join('')}</td>
    <td>${pb(b.priority)}</td><td>${b.contacts}</td><td>${b.indians}</td><td>${b.signals}</td>
@@ -269,7 +285,7 @@ async function account360(el,id){
  <div class="sub">Account 360 — everything about this bank in one place.</div>
  <div id="a360x"></div>
  <div class="tabs" id="a360t"></div><div id="a360b"></div>`;
- const tabs={Overview:t360Overview,Contacts:t360Contacts,Committee:t360Committee,Signals:t360Signals,Vendors:t360Vendors,Deals:t360Deals,Documents:t360Docs,AI:t360AI,Tasks:t360Tasks};
+ const tabs={Overview:t360Overview,Activity:t360Activity,Contacts:t360Contacts,Committee:t360Committee,Signals:t360Signals,Vendors:t360Vendors,Deals:t360Deals,Documents:t360Docs,AI:t360AI,Tasks:t360Tasks};
  const tb=document.getElementById('a360t');
  Object.keys(tabs).forEach((t,i)=>{const b=document.createElement('button');b.textContent=t;
   b.onclick=()=>{tb.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');tabs[t](document.getElementById('a360b'),id)};
@@ -301,6 +317,29 @@ async function t360Overview(el,id){const r=await api('GET','/organizations/'+id+
  const d=r.ok?r.data:{};document.getElementById('ov').innerHTML=
   kpi('Tier',d.tier||'—',d.segment||'')+kpi('Score',d.score??'—','readiness '+(d.readiness??'—'))+kpi('Lifecycle',d.lifecycle_status||'—',d.open_banking?'open banking: '+d.open_banking:'');}
 
+/* ── Activity tab: bank-level unified timeline + logging ── */
+async function t360Activity(el,id){
+ el.innerHTML=`<div class="card"><h3>Log bank-level activity (event, seminar, exec meeting…)</h3>
+ <div class="grid g3"><div><label>Type</label><select id="oa_t"><option>event</option><option>seminar</option><option>webinar</option><option>meeting</option><option>linkedin</option><option>call</option><option>site_visit</option><option>note</option></select></div>
+ <div><label>Outcome</label><input id="oa_o"></div><div><label>Next action</label><input id="oa_x"></div></div>
+ <label>What happened</label><textarea id="oa_n" rows="2"></textarea>
+ <button class="act" onclick="oaSave('${id}')">Log it</button></div>
+ <div class="card" style="margin-top:12px"><h3>Bank activity timeline (all contacts + org events)</h3><div id="oatl">loading…</div></div>`;
+ oaLoad(id);}
+window.oaLoad=async id=>{
+ const r=await api('GET','/bd/orgs/'+id+'/timeline');
+ const rows=r.ok?(r.data||[]).slice(0,60):[];
+ document.getElementById('oatl').innerHTML=rows.length?rows.map(e=>{
+  const k=(e.kind||'').split(':')[0];
+  return `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px">
+  <span>${KIND_ICON[k]||'•'}</span><span class="muted" style="min-width:118px">${String(e.at).slice(0,16).replace('T',' ')}</span>
+  <span><b>${esc(e.kind)}</b> ${esc(e.detail||'')}${e.person?(' <span class="muted">· '+esc(e.person)+'</span>'):''}</span></div>`}).join(''):
+  '<span class="muted">no activity yet — log one above, or contact-level touches will roll up here</span>';};
+window.oaSave=async id=>{
+ const r=await api('POST','/bd/orgs/'+id+'/activities',{activity_type:v2('oa_t'),notes:v2('oa_n'),
+  outcome:v2('oa_o')||null,next_action:v2('oa_x')||null,owner:'Puneet'});
+ if(r.ok){document.getElementById('oa_n').value='';oaLoad(id);}};
+
 /* ── Contacts tab: FULL legacy parity (filters, pagination, edit, log, del) ── */
 let _c360={id:null,page:1};
 async function t360Contacts(el,id){
@@ -312,7 +351,9 @@ async function t360Contacts(el,id){
   <select id="cf_t" onchange="c360Load()" style="max-width:130px"><option value="">All tiers</option><option value="1">Tier 1</option><option value="2">Tier 2</option><option value="3">Tier 3</option></select>
   <select id="cf_s" onchange="c360Load()" style="max-width:150px"><option value="">All seniority</option><option value="c_suite">C-suite</option><option value="evp_svp">EVP/SVP</option><option value="vp_director">VP/Director</option><option value="manager">Manager</option><option value="staff">Staff</option></select>
   <label style="display:flex;align-items:center;gap:5px;color:var(--text);font-size:12.5px;margin:0"><input type="checkbox" id="cf_i" onchange="c360Load()" style="width:auto"> 🇮🇳 Indian origin only</label>
-  <button class="act" style="margin:0" onclick="c360NewForm('${id}')">+ New contact</button></div>
+  <button class="act" style="margin:0" onclick="c360NewForm('${id}')">+ New contact</button>
+  <button class="act gold" style="margin:0" onclick="c360Upload('${id}')">⬆ Upload Excel/CSV</button>
+  <button class="act" style="margin:0;background:var(--blue)" onclick="c360Export('${id}')">⬇ Export</button></div>
  <div id="cform"></div><div id="clist">loading…</div><div id="cpage" class="muted" style="margin-top:8px"></div></div>`;
  c360Load();}
 window.c360Load=async()=>{
@@ -328,7 +369,7 @@ window.c360Load=async()=>{
  const st=p=>p.summary&&p.summary!=='Not contacted yet'?esc(p.summary.slice(0,60)):(p.messaged?'messaged':p.conn_accepted?'accepted':p.conn_sent?'sent':'—');
  document.getElementById('clist').innerHTML=d.contacts.length?
   '<table><tr><th>Name</th><th>Title</th><th>Tier</th><th>Flags</th><th>Outreach</th><th>Actions</th></tr>'+d.contacts.map(p=>
-  `<tr><td><b>${esc(p.full_name)}</b>${p.linkedin?' <a style="color:var(--blue)" href="'+esc(p.linkedin)+'" target="_blank">in</a>':''}</td>
+  `<tr><td><b class="click" style="cursor:pointer;color:var(--gold)" onclick='nav("contact/${p.id}")'>${esc(p.full_name)}</b>${p.linkedin?' <a style="color:var(--blue)" href="'+esc(p.linkedin)+'" target="_blank">in</a>':''}</td>
   <td class="muted">${esc(p.title||'')}</td><td>${p.priority_tier?('<span class="badge '+(p.priority_tier==='1'?'b-gold':'b-dim')+'">T'+p.priority_tier+'</span>'):'—'}</td>
   <td>${flag(p)}</td><td class="muted">${st(p)}${p.next_step?(' · '+esc(p.next_step.slice(0,30))):''}</td>
   <td style="white-space:nowrap"><button class="act gold" style="margin:0;padding:3px 8px" onclick='c360Edit(${JSON.stringify(p)})'>edit</button>
@@ -338,6 +379,35 @@ window.c360Load=async()=>{
  if(d.page>1)pg+=' · <a style="color:var(--gold);cursor:pointer" onclick="_c360.page--;c360Load()">← prev</a>';
  if(d.page<d.pages)pg+=' · <a style="color:var(--gold);cursor:pointer" onclick="_c360.page++;c360Load()">next →</a>';
  document.getElementById('cpage').innerHTML=pg;};
+window.c360Upload=id=>{
+ const inp=document.createElement('input');inp.type='file';inp.accept='.csv,.xlsx,.xls';
+ inp.onchange=async()=>{
+  const box=document.getElementById('cform');
+  box.innerHTML='<div class="card" style="margin-bottom:10px"><span class="badge b-gold">uploading '+esc(inp.files[0].name)+' …</span></div>';
+  const fd=new FormData();fd.append('file',inp.files[0]);
+  const h={};if(S.token)h['Authorization']='Bearer '+S.token;
+  const r=await fetch('/bd/banks/'+id+'/contacts/upload',{method:'POST',headers:h,body:fd});
+  const j=await r.json().catch(()=>({}));
+  box.innerHTML='<div class="card" style="margin-bottom:10px"><h3>'+(r.ok?'Import complete':'Import failed')+'</h3><pre>'+esc(JSON.stringify(j,null,1))+'</pre>'+
+   '<button class="act" style="background:var(--line)" onclick="document.getElementById(\'cform\').innerHTML=\'\'">Close</button></div>';
+  c360Load();};
+ inp.click();};
+window.c360Export=id=>{
+ document.getElementById('cform').innerHTML=`<div class="card" style="margin-bottom:10px"><h3>Export contacts — which ones?</h3>
+ <div style="display:flex;flex-direction:column;gap:6px;margin:8px 0">
+ <button class="act" onclick="dl('/export/persons?org_id=${id}','${esc((S.account||{}).name||'bank')}_all.csv')">⬇ All contacts at this bank</button>
+ <button class="act" onclick="dl('/export/persons?org_id=${id}&tier=1','tier1.csv')">⬇ Tier 1 only</button>
+ <button class="act" onclick="dl('/export/persons?org_id=${id}&indian=1','indian_origin.csv')">⬇ Indian-origin only</button>
+ <button class="act" onclick="dl('/export/persons?org_id=${id}&seniority=c_suite','c_suite.csv')">⬇ C-suite only</button>
+ <button class="act gold" onclick="dl('/export/persons','all_contacts.csv')">⬇ EVERY contact (all banks)</button></div>
+ <button class="act" style="background:var(--line)" onclick="document.getElementById('cform').innerHTML=''">Close</button></div>`;};
+/* auth-aware download: fetch with the bearer token, then save the blob */
+window.dl=async(path,filename)=>{
+ const h={};if(S.token)h['Authorization']='Bearer '+S.token;
+ const r=await fetch(path,{headers:h});
+ if(!r.ok){alert('export failed: '+r.status+(r.status===401?' — sign in first (Settings)':''));return}
+ const blob=await r.blob();const u=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=u;a.download=filename;a.click();URL.revokeObjectURL(u);};
 window.c360NewForm=id=>{document.getElementById('cform').innerHTML=`<div class="card" style="margin-bottom:10px"><h3>New contact</h3>
  <div class="grid g3"><div><label>Full name</label><input id="cn_n"></div>
  <div><label>Title</label><input id="cn_t"></div>
@@ -424,15 +494,38 @@ window.c360cov=async id=>{const r=await api('GET','/abm/committee/'+id+'/coverag
 window.c360inf=async id=>{const r=await api('POST','/abm/committee/'+id+'/infer');
  document.getElementById('cinf').textContent=JSON.stringify(r.data,null,1);c360cov(id);};
 async function t360Signals(el,id){
- el.innerHTML=`<div class="card"><div style="display:flex;gap:8px;margin-bottom:10px">
- <button class="act" style="margin:0" onclick="sg360New('${id}')">+ New signal / initiative</button></div>
- <div id="sgform"></div><div id="sg360l">loading…</div></div>`;
- sg360Load(id);}
+ el.innerHTML=`<div class="card"><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+ <button class="act" style="margin:0" onclick="sg360New('${id}')">+ New signal / initiative</button>
+ <button class="act gold" style="margin:0" onclick="src360New('${id}')">+ Add news source (link)</button></div>
+ <div id="sgform"></div><div id="src360l" class="muted" style="margin-bottom:8px"></div><div id="sg360l">loading…</div></div>`;
+ sg360Load(id);src360Load(id);}
+window.src360Load=async id=>{
+ const r=await api('GET','/abm/collectors');if(!r.ok)return;
+ const mine=(r.data||[]).filter(s=>s.url&&(s.org_id===id||false));
+ // sources endpoint doesn't return org_id yet; show all bank-dedicated via name convention fallback
+ const all=(r.data||[]);
+ const rows=all.filter(s=>(s.org_id===id));
+ document.getElementById('src360l').innerHTML=rows.length?
+  'Dedicated sources: '+rows.map(s=>`${esc(s.name)} <span class="badge ${s.enabled?'b-green':'b-red'}">${s.enabled?'on':'off'}</span> (${s.items_ingested} items) <button class="act" style="margin:0;padding:2px 8px" onclick='src360Run("${s.id}","${id}")'>fetch now</button>`).join(' · '):'';};
+window.src360New=id=>{document.getElementById('sgform').innerHTML=`<div class="card" style="margin-bottom:10px"><h3>Add a news/RSS source for THIS bank</h3>
+ <div class="muted" style="margin-bottom:6px">Paste any RSS/Atom link (bank newsroom feed, Google News RSS for the bank, etc). Every item fetched will be attached to this bank automatically, hourly.</div>
+ <label>Source name</label><input id="sr_n" placeholder="e.g. Alinma newsroom">
+ <label>Feed URL</label><input id="sr_u" placeholder="https://…/rss">
+ <label>Type</label><select id="sr_t"><option>news</option><option>regulatory</option><option>hiring</option><option>tender</option></select>
+ <button class="act" onclick="src360Add('${id}')">Add + fetch now</button>
+ <button class="act" style="background:var(--line)" onclick="document.getElementById('sgform').innerHTML=''">Cancel</button></div>`;};
+window.src360Add=async id=>{
+ const r=await api('POST','/abm/collectors',{name:v2('sr_n'),url:v2('sr_u'),signal_type:v2('sr_t'),org_id:id});
+ if(!r.ok){alert('failed: '+JSON.stringify(r.data));return}
+ document.getElementById('sgform').innerHTML='';
+ await api('POST','/abm/collectors/'+r.data.id+'/run');
+ sg360Load(id);src360Load(id);};
+window.src360Run=async(sid,id)=>{await api('POST','/abm/collectors/'+sid+'/run');sg360Load(id);src360Load(id);};
 window.sg360Load=async id=>{
  const r=await api('GET','/organizations/'+id+'/signals');
  document.getElementById('sg360l').innerHTML=r.ok&&r.data.length?
   '<table><tr><th>Signal</th><th>Type</th><th>Urgency</th><th>Status</th><th>Actions</th></tr>'+r.data.map(s=>
-  `<tr><td>${esc(s.title)}${s.estimated_value?' <span class="muted">('+esc(s.estimated_value)+')</span>':''}</td>
+  `<tr><td>${s.url?('<a href="'+esc(s.url)+'" target="_blank" style="color:var(--gold);text-decoration:none">'+esc(s.title)+' ↗</a>'):esc(s.title)}${s.estimated_value?' <span class="muted">('+esc(s.estimated_value)+')</span>':''}</td>
   <td><span class="badge b-blue">${esc(s.signal_type)}</span></td><td>${esc(s.urgency||'')}</td>
   <td>${s.is_read?'<span class="badge b-dim">read</span>':'<span class="badge b-gold">new</span>'}${s.is_actioned?' <span class="badge b-green">actioned</span>':''}</td>
   <td style="white-space:nowrap"><button class="act" style="margin:0;padding:3px 8px" onclick='sg360T("${s.id}","read","${id}")'>read</button>
@@ -545,7 +638,7 @@ SCREENS.contacts=async el=>{
   <input id="pq" placeholder="🔍 Search people by name / title / email…" oninput="pFilter()" style="max-width:320px">
   <button class="act" style="margin:0" onclick="pNewForm()">+ New contact</button>
   <button class="act gold" style="margin:0" onclick="csvUp('persons')">⬆ Import CSV</button>
-  <a class="act" style="margin:0;text-decoration:none;display:inline-block" href="/export/persons">⬇ Export CSV</a></div>
+  <button class="act" style="margin:0" onclick="dl('/export/persons','all_contacts.csv')">⬇ Export CSV</button></div>
   <div id="pform"></div><div id="plist">loading…</div></div>
  <div class="card" style="margin-top:14px"><h3>Hot leads</h3><div id="phot">—</div></div>`;
  const r=await api('GET','/persons');
@@ -557,7 +650,7 @@ window.pFilter=()=>{
  const q=(document.getElementById('pq')?.value||'').toLowerCase();
  const rows=_pplCache.filter(p=>!q||((p.full_name||'')+' '+(p.current_title||'')+' '+(p.primary_email||'')).toLowerCase().includes(q)).slice(0,60);
  document.getElementById('plist').innerHTML=rows.length?'<table><tr><th>Name</th><th>Title</th><th>Email</th><th>Tier</th><th></th></tr>'+rows.map(p=>
-  `<tr><td>${esc(p.full_name)}</td><td class="muted">${esc(p.current_title||'')}</td><td class="muted">${esc(p.primary_email||'')}</td><td>${esc(p.tier||'—')}</td>
+  `<tr><td class="click" style="cursor:pointer;color:var(--gold)" onclick='nav("contact/${p.id}")'>${esc(p.full_name)}</td><td class="muted">${esc(p.current_title||'')}</td><td class="muted">${esc(p.primary_email||'')}</td><td>${esc(p.tier||'—')}</td>
   <td style="white-space:nowrap"><button class="act gold" style="margin:0;padding:4px 10px" onclick='pEdit("${p.id}")'>edit</button>
   <button class="act" style="margin:0;padding:4px 10px;background:var(--red)" onclick='pDel("${p.id}",${JSON.stringify(p.full_name)})'>del</button></td></tr>`).join('')+'</table>':'<span class="muted">no matches</span>';};
 window.pNewForm=()=>{document.getElementById('pform').innerHTML=`<div class="card" style="margin-bottom:10px">
@@ -595,6 +688,58 @@ window.vFilter=()=>{
   (v.intelligence?`<div class="muted" style="margin-top:4px">${esc((v.intelligence.products||[]).slice?String(v.intelligence.products).slice(0,140):'' )}</div>`:'')+'</div>').join(''):
   '<span class="muted">no vendor edges yet — import the ecosystem workbook via the legacy dashboard ETL, or add org relationships via API</span>';};
 
+/* ── CONTACT PAGE: its own route (#/contact/{id}) — the ABM person 360 ── */
+SCREENS.contact=async(el,id)=>{
+ if(!id){el.innerHTML='<div class="planned">Open a contact from any list.</div>';return}
+ const r=await api('GET','/persons/'+id);
+ if(!r.ok){el.innerHTML='<div class="planned">contact not found</div>';return}
+ const p=r.data;
+ el.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+  <h2>${esc(p.full_name)}</h2><span class="muted">${esc(p.current_title||'')}</span>
+  ${p.priority_tier?'<span class="badge b-gold">T'+esc(p.priority_tier)+'</span>':''}
+  ${p.is_indian_origin?'<span class="badge b-blue">🇮🇳</span>':''}
+  ${p.linkedin_url?'<a class="act" style="margin:0;padding:4px 10px;text-decoration:none;background:var(--blue)" href="'+esc(p.linkedin_url)+'" target="_blank">LinkedIn ↗</a>':''}
+ </div>
+ <div class="sub">${esc(p.primary_email||'')} ${p.mobile?(' · '+esc(p.mobile)):''} — every touch across every channel, in one timeline.</div>
+ <div class="tabs" id="cpt"></div><div id="cpb"></div>`;
+ const tabs={Activity:cpActivity,Channels:cpChannels,"Log activity":cpLog,History:cpHistory};
+ const tb=document.getElementById('cpt');
+ Object.keys(tabs).forEach((t,i)=>{const b=document.createElement('button');b.textContent=t;
+  b.onclick=()=>{tb.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');tabs[t](document.getElementById('cpb'),id)};
+  if(i===0)b.classList.add('on');tb.appendChild(b);});
+ cpActivity(document.getElementById('cpb'),id);};
+const KIND_ICON={activity:'📌',sequence:'⚙️',email:'✉️',linkedin:'💼',form:'📝',ai:'🤖',touch:'👋'};
+async function cpActivity(el,id){
+ const r=await api('GET','/bd/persons/'+id+'/timeline');
+ const rows=r.ok?(r.data||[]):[];
+ el.innerHTML='<div class="card"><h3>Unified activity timeline</h3>'+(rows.length?rows.map(e=>{
+  const k=(e.kind||'').split(':')[0];
+  return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px">
+  <span>${KIND_ICON[k]||'•'}</span><span class="muted" style="min-width:118px">${String(e.at).slice(0,16).replace('T',' ')}</span>
+  <span><b>${esc(e.kind)}</b> ${esc(e.detail||'')} <span class="muted">· ${esc(e.source||'')}</span></span></div>`}).join(''):
+  '<span class="muted">no activity yet — log a touch in the "Log activity" tab, or channel updates/emails/sequence events will appear here automatically</span>')+'</div>';}
+async function cpChannels(el,id){
+ el.innerHTML='<div id="chwrap"><div class="grid g2" id="chgrid"><div class="muted">loading…</div></div><br><button class="act" onclick="saveChannels(\''+id+'\').then(()=>cpChannels(document.getElementById(\'cpb\'),\''+id+'\'))">Save channels</button></div>';
+ loadChannels(id);}
+function cpLog(el,id){
+ el.innerHTML=`<div class="card"><h3>Log an activity (event, seminar, LinkedIn touch, call…)</h3>
+ <div class="grid g3"><div><label>Type</label><select id="la_t"><option>linkedin</option><option>event</option><option>seminar</option><option>webinar</option><option>meeting</option><option>call</option><option>whatsapp</option><option>site_visit</option><option>note</option></select></div>
+ <div><label>Outcome</label><input id="la_o" placeholder="e.g. positive, met at booth"></div>
+ <div><label>Next action</label><input id="la_x" placeholder="e.g. send deck by Sunday"></div></div>
+ <label>What happened</label><textarea id="la_n" rows="3" placeholder="Met at Seamless KSA, discussed digital onboarding…"></textarea>
+ <button class="act" onclick="cpLogSave('${id}')">Log it</button><pre id="la_out" style="display:none"></pre></div>`;}
+window.cpLogSave=async id=>{
+ const r=await api('POST','/bd/persons/'+id+'/activities',{activity_type:v2('la_t'),notes:v2('la_n'),
+  outcome:v2('la_o')||null,next_action:v2('la_x')||null,owner:'Puneet'});
+ if(r.ok){nav('contact/'+id);}else{const o=document.getElementById('la_out');o.style.display='block';o.textContent=JSON.stringify(r.data);}};
+async function cpHistory(el,id){
+ const r=await api('GET','/crm/records/persons/'+id+'/history');
+ const rows=(r.data||[]).slice(-25).reverse();
+ el.innerHTML='<div class="card"><h3>Field change history (audit)</h3>'+(rows.length?rows.map(h=>
+  `<div style="margin:5px 0;font-size:12.5px"><span class="badge ${h.action==='insert'?'b-green':'b-gold'}">${h.action}</span>
+  <span class="muted">${String(h.at).slice(0,16)} · ${esc(h.actor||'system')}</span> ${(h.changed||[]).join(', ')}</div>`).join(''):
+  '<span class="muted">no changes recorded</span>')+'</div>';}
+
 SCREENS.connectors=async el=>{
  el.innerHTML='<h2>Connectors</h2><div class="sub">People who open doors — warm paths into the banks.</div><div class="card"><div id="cnl">loading…</div></div>';
  const r=await api('GET','/bd/connectors');
@@ -608,7 +753,7 @@ SCREENS.initiatives=async el=>{
  const r=await api('GET','/bd/initiatives');
  document.getElementById('inl').innerHTML=r.ok&&r.data.length?
   '<table><tr><th>Initiative</th><th>Bank</th><th>Type</th><th>Urgency</th><th>Value</th><th>Status</th></tr>'+r.data.map(s=>
-  `<tr><td>${esc(s.title)}</td><td>${esc(s.bank||'—')}</td><td><span class="badge b-blue">${esc(s.type)}</span></td>
+  `<tr><td>${s.url?('<a href="'+esc(s.url)+'" target="_blank" style="color:var(--gold);text-decoration:none">'+esc(s.title)+' ↗</a>'):esc(s.title)}</td><td>${esc(s.bank||'—')}</td><td><span class="badge b-blue">${esc(s.type)}</span></td>
   <td>${esc(s.urgency||'')}</td><td class="muted">${esc(s.value||'')}</td>
   <td>${s.is_actioned?'<span class="badge b-green">actioned</span>':s.is_read?'<span class="badge b-dim">read</span>':'<span class="badge b-gold">new</span>'}</td></tr>`).join('')+'</table>':
   '<span class="muted">no signals yet</span>';};
@@ -654,7 +799,7 @@ SCREENS.signals=async el=>{
  sigsLoad();colHealth();};
 async function sigsLoad(){const r=await api('GET','/signals');
  document.getElementById('slist').innerHTML=r.ok&&r.data.length?'<table>'+r.data.slice(0,20).map(s=>
-  `<tr><td>${esc(s.title)}</td><td><span class="badge b-blue">${esc(s.signal_type)}</span></td></tr>`).join('')+'</table>':'<span class="muted">empty — seed + run collectors</span>';}
+  `<tr><td>${s.url?('<a href="'+esc(s.url)+'" target="_blank" style="color:var(--gold);text-decoration:none">'+esc(s.title)+' ↗</a>'):esc(s.title)}</td><td><span class="badge b-blue">${esc(s.signal_type)}</span></td></tr>`).join('')+'</table>':'<span class="muted">empty — seed + run collectors</span>';}
 async function colHealth(){const r=await api('GET','/abm/collectors');
  document.getElementById('chealth').innerHTML=r.ok&&r.data.length?r.data.map(s=>
   `<div style="margin:4px 0">${esc(s.name)} <span class="badge ${s.enabled?'b-green':'b-red'}">${s.enabled?'on':'off'}</span> <span class="muted">${s.items_ingested} ingested</span></div>`).join(''):'<span class="muted">no sources yet</span>';}
@@ -683,29 +828,64 @@ window.cmpLoad=async()=>{
   <button class="act gold" style="margin:0;padding:3px 8px" onclick='cmpReport("${c.id}")'>report</button></td></tr>`}).join('')+'</table>'+
   '<pre id="cmpout" style="display:none"></pre>':'<span class="muted">no campaigns yet</span>';};
 window.cmpNewForm=async()=>{
- const segs=await api('GET','/mkt/segments-brief');
+ const[segs,orgs]=await Promise.all([api('GET','/mkt/segments-brief'),api('GET','/organizations')]);
+ if(orgs.ok)_orgsCache=orgs.data||[];
  document.getElementById('cmpform').innerHTML=`<div style="margin-top:10px">
  <div class="grid g2"><div><label>Campaign name</label><input id="cm_n" value="KSA outreach ${new Date().toISOString().slice(5,10)}"></div>
- <div><label>Audience from segment</label><select id="cm_g">${(segs.data||[]).map(s=>`<option value="${s.id}">${esc(s.name)} (${s.size})</option>`).join('')||'<option value="">— create a segment first (Marketing → Segments) —</option>'}</select></div></div>
+ <div><label>Choose audience</label><select id="cm_a" onchange="cmpAudPreview()">
+   <optgroup label="Built-in audiences">
+    <option value="all">Everyone (active contacts)</option>
+    <option value="tier1">Tier 1 contacts</option>
+    <option value="tier2">Tier 2 contacts</option>
+    <option value="c_suite">C-suite only</option>
+    <option value="indian">Indian-origin contacts</option></optgroup>
+   <optgroup label="By bank">${_orgsCache.map(o=>`<option value="bank:${o.id}">${esc(o.canonical_name)}</option>`).join('')}</optgroup>
+   ${(segs.data||[]).length?'<optgroup label="Saved segments">'+segs.data.map(s=>`<option value="seg:${s.id}">${esc(s.name)} (${s.size})</option>`).join('')+'</optgroup>':''}
+ </select></div></div>
+ <div id="cm_prev" class="muted" style="margin:6px 0">—</div>
  <label>Subject</label><input id="cm_s" value="Partnering on digital onboarding, {bank}">
  <label>Body (merge tags: {first_name} {bank})</label><textarea id="cm_b" rows="5">Dear {first_name},
 
 We have been following {bank}'s digital initiatives closely...</textarea>
- <button class="act" onclick="cmpCreate()">Create campaign</button>
+ <button class="act" onclick="cmpCreate()">Create campaign →</button>
  <button class="act" style="background:var(--line)" onclick="document.getElementById('cmpform').innerHTML=''">Cancel</button>
- <div class="muted" style="margin-top:6px">Send-safe: sending builds + personalizes + logs every message with analytics, but nothing reaches a real inbox until SES credentials are configured. C-suite is always held for human review.</div></div>`;};
+ <div class="muted" style="margin-top:6px">Send-safe: sending builds, personalizes and logs every message with analytics, but nothing reaches a real inbox until SES credentials are configured. C-suite is always held for human review.</div></div>`;
+ cmpAudPreview();};
+window.cmpAudPreview=async()=>{
+ const v=document.getElementById('cm_a').value;
+ let body={name:'preview',builtin:v};
+ if(v.startsWith('seg:'))body={name:'preview',segment_id:v.slice(4),builtin:null};
+ else if(v.startsWith('bank:'))body={name:'preview',builtin:v};
+ // create a throwaway audience just to count — cheap
+ const a=await api('POST','/mkt/audiences',body);
+ if(a.ok)document.getElementById('cm_prev').innerHTML='👥 This audience has <b style="color:var(--gold)">'+a.data.members+'</b> contacts';
+ window._lastAud=a.ok?a.data.id:null;};
 window.cmpCreate=async()=>{
- const segId=v2('cm_g');if(!segId){alert('Create a segment first (Marketing → Segments)');return}
- const a=await api('POST','/mkt/audiences',{name:v2('cm_n')+' audience',segment_id:segId});
- if(!a.ok){alert('audience failed: '+JSON.stringify(a.data));return}
- const r=await api('POST','/mkt/campaigns',{name:v2('cm_n'),audience_id:a.data.id,subject:v2('cm_s'),body:v2('cm_b')});
- if(r.ok){document.getElementById('cmpform').innerHTML='';cmpLoad();}else alert(JSON.stringify(r.data));};
-window.cmpSend=async id=>{const r=await api('POST','/mkt/campaigns/'+id+'/send');
- const o=document.getElementById('cmpout');o.style.display='block';
- o.textContent=r.ok?JSON.stringify(r.data,null,1):('send failed: '+JSON.stringify(r.data));cmpLoad();};
-window.cmpReport=async id=>{const r=await api('GET','/mkt/campaigns/'+id+'/report');
- const o=document.getElementById('cmpout');o.style.display='block';
- o.textContent=JSON.stringify(r.data,null,1);};
+ if(!window._lastAud){alert('pick an audience');return}
+ const r=await api('POST','/mkt/campaigns',{name:v2('cm_n'),audience_id:window._lastAud,subject:v2('cm_s'),body:v2('cm_b')});
+ if(r.ok){document.getElementById('cmpform').innerHTML='';nav('campaign/'+r.data.id);}else alert(JSON.stringify(r.data));};
+window.cmpSend=async id=>{await api('POST','/mkt/campaigns/'+id+'/send');nav('campaign/'+id);};
+window.cmpReport=id=>nav('campaign/'+id);
+
+/* Campaign detail page (its own route) */
+SCREENS.campaign=async(el,id)=>{
+ if(!id){nav('campaigns');return}
+ const list=await api('GET','/mkt/campaigns');
+ const c=(list.data||[]).find(x=>x.id===id)||{name:'campaign'};
+ const rep=c.report||{};
+ el.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><h2>${esc(c.name)}</h2>
+  <span class="badge ${c.status==='sent'?'b-green':'b-dim'}">${esc(c.status||'')}</span>
+  <button class="act" style="margin:0" onclick="cmpSend('${id}')">Send (dry-run)</button>
+  <button class="act" style="margin:0;background:var(--line)" onclick="nav('campaigns')">← all campaigns</button></div>
+ <div class="sub">${esc(c.subject||'')}</div>
+ <div class="grid g4">${kpi('Sent',rep.sent??'—','')+kpi('Opens',rep.unique_opens??rep.opens??'—','')+kpi('Clicks',rep.unique_clicks??rep.clicks??'—','')+kpi('Replies',rep.replies??'—','')}</div>
+ <div class="card" style="margin-top:12px"><h3>Recipients</h3><div id="cmr">loading…</div></div>`;
+ const m=await api('GET','/mkt/campaigns/'+id+'/messages');
+ document.getElementById('cmr').innerHTML=(m.ok&&m.data.length)?
+  '<table><tr><th>Contact</th><th>Email</th><th>Variant</th><th>Status</th><th>Events</th></tr>'+m.data.map(x=>
+  `<tr><td>${esc(x.person||'')}</td><td class="muted">${esc(x.to||'')}</td><td>${esc(x.variant||'')}</td>
+  <td><span class="badge b-dim">${esc(x.status||'')}</span></td><td class="muted">${(x.events||[]).join(', ')}</td></tr>`).join('')+'</table>':
+  '<span class="muted">no messages yet — click "Send (dry-run)" to build the recipient list</span>';};
 
 SCREENS.journeys=async el=>{
  el.innerHTML=`<h2>Journeys</h2><div class="sub">Multi-step orchestration: send → wait → branch.</div>
@@ -741,18 +921,52 @@ SCREENS.email=async el=>{
  document.getElementById('ec').innerHTML=d.per_campaign.length?'<table><tr><th>Campaign</th><th>Sent</th><th>Open%</th><th>Click%</th></tr>'+d.per_campaign.map(c=>
   `<tr><td>${esc(c.campaign)}</td><td>${c.sent}</td><td>${c.open_rate}</td><td>${c.click_rate}</td></tr>`).join('')+'</table>':'<span class="muted">no sends in window</span>';};
 
+let _pipe={view:'board',q:'',bank:'',min:0,sort:'amount'};
 SCREENS.pipeline=async el=>{
- el.innerHTML=`<h2>Pipeline</h2><div class="sub">Kanban across stages — move deals with ◀ ▶, click to edit.</div>
+ if(!_orgsCache.length){const rr=await api('GET','/organizations');_orgsCache=rr.ok?rr.data:[];}
+ el.innerHTML=`<h2>Pipeline</h2><div class="sub">Board or table · filter · sort · export — every control acts instantly.</div>
  <div class="grid g3" id="pk"></div>
- <div class="card" style="margin-top:12px"><button class="act" style="margin:0" onclick="dealNewForm()">+ New deal</button><div id="dform"></div></div>
- <div id="kanban" style="display:flex;gap:10px;overflow-x:auto;margin-top:12px;align-items:flex-start"></div>`;
+ <div class="card" style="margin-top:12px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <button class="act" style="margin:0" onclick="dealNewForm()">+ New deal</button>
+  <button class="act gold" style="margin:0" id="pv_b" onclick="_pipe.view='board';kanbanLoad()">▦ Board</button>
+  <button class="act" style="margin:0;background:var(--line)" id="pv_t" onclick="_pipe.view='table';kanbanLoad()">☰ Table</button>
+  <input placeholder="🔍 search deals…" style="max-width:170px" oninput="_pipe.q=this.value;kanbanLoad()">
+  <select style="max-width:170px" onchange="_pipe.bank=this.value;kanbanLoad()"><option value="">All banks</option>${_orgsCache.map(o=>`<option value="${o.id}">${esc(o.canonical_name)}</option>`).join('')}</select>
+  <select style="max-width:150px" onchange="_pipe.min=parseFloat(this.value)||0;kanbanLoad()"><option value="0">Any amount</option><option value="100000">≥ SAR 100k</option><option value="500000">≥ SAR 500k</option><option value="1000000">≥ SAR 1M</option></select>
+  <select style="max-width:150px" onchange="_pipe.sort=this.value;kanbanLoad()"><option value="amount">Sort: amount ↓</option><option value="bank">Sort: bank A-Z</option></select>
+  <button class="act" style="margin:0" onclick="dealExport()">⬇ Export CSV</button></div>
+ <div id="dform"></div></div>
+ <div id="kanban" style="display:flex;gap:10px;overflow-x:auto;margin-top:12px;align-items:flex-start"></div>
+ <div id="ptable" style="margin-top:12px"></div>`;
  const e=await api('GET','/dashboard/executive');
  if(e.ok)document.getElementById('pk').innerHTML=kpi('Pipeline',e.data.pipeline_sar,'')+kpi('Weighted',e.data.weighted_sar,'')+kpi('Open deals',e.data.open_deals,'');
  kanbanLoad();};
+function _pipeFilter(cards){
+ let out=cards.filter(c=>(!_pipe.q||((c.bank||'')+' '+(c.next_step||'')+' '+(c.notes||'')).toLowerCase().includes(_pipe.q.toLowerCase()))
+  &&(!_pipe.bank||c.org_id===_pipe.bank)&&(c.amount_sar>=_pipe.min));
+ out.sort((a,b)=>_pipe.sort==='bank'?String(a.bank).localeCompare(String(b.bank)):b.amount_sar-a.amount_sar);
+ return out;}
+window.dealExport=async()=>{
+ const r=await api('GET','/bd/deals/board');if(!r.ok){alert('export failed — sign in first');return}
+ let csv='stage,bank,amount_sar,next_step,notes\n';let n=0;
+ for(const s of r.data.stages)for(const c of _pipeFilter(r.data.columns[s]||[])){
+  csv+=[s,JSON.stringify(c.bank||''),c.amount_sar,JSON.stringify(c.next_step||''),JSON.stringify(c.notes||'')].join(',')+'\n';n++;}
+ const blob=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=u;a.download='pipeline_'+n+'deals.csv';a.click();URL.revokeObjectURL(u);};
 window.kanbanLoad=async()=>{
  const r=await api('GET','/bd/deals/board');if(!r.ok)return;const d=r.data;
+ document.getElementById('pv_b').style.background=_pipe.view==='board'?'var(--gold)':'var(--line)';
+ document.getElementById('pv_t').style.background=_pipe.view==='table'?'var(--gold)':'var(--line)';
+ if(_pipe.view==='table'){
+  document.getElementById('kanban').innerHTML='';
+  let rows=[];for(const s of d.stages)for(const c of _pipeFilter(d.columns[s]||[]))rows.push({...c,stage:s});
+  document.getElementById('ptable').innerHTML='<div class="card"><table><tr><th>Bank</th><th>Stage</th><th>Amount (SAR)</th><th>Next step</th><th></th></tr>'+
+   rows.map(c=>`<tr><td><b>${esc(c.bank)}</b></td><td>${esc(c.stage)}</td><td>${c.amount_sar.toLocaleString()}</td><td class="muted">${esc(c.next_step||'')}</td>
+   <td><button class="act gold" style="margin:0;padding:3px 8px" onclick='dealEdit(${JSON.stringify(c)})'>edit</button></td></tr>`).join('')+'</table></div>';
+  return;}
+ document.getElementById('ptable').innerHTML='';
  document.getElementById('kanban').innerHTML=d.stages.map(s=>{
-  const cards=d.columns[s]||[];
+  const cards=_pipeFilter(d.columns[s]||[]);
   const col=s==='Won'?'var(--green)':s==='Lost'?'var(--red)':'var(--line)';
   return `<div style="min-width:200px;flex:1;background:var(--panel);border:1px solid ${col};border-radius:12px;padding:10px">
   <div style="font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${s}

@@ -79,13 +79,25 @@ class SourceReq(BaseModel):
     kind: str = "rss"
     signal_type: str = "news"
     interval_minutes: int = 60
+    org_id: str | None = None      # dedicated source for one bank/vendor
 
 
 @router.post("/abm/collectors", status_code=201)
 def add_source(req: SourceReq, db: Session = Depends(get_db)):
     s = collectors.add_source(db, req.name, req.url, req.kind,
-                              req.signal_type, req.interval_minutes)
-    return {"id": s.id, "name": s.name}
+                              req.signal_type, req.interval_minutes,
+                              org_id=req.org_id)
+    return {"id": s.id, "name": s.name, "org_id": s.org_id}
+
+
+@router.post("/abm/collectors/{source_id}/run")
+def run_one(source_id: str, db: Session = Depends(get_db)):
+    import models_collectors as mc
+    src = db.get(mc.SignalSource, source_id)
+    if src is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="source not found")
+    return collectors.run_source(db, src)
 
 
 @router.post("/abm/collectors/seed")
