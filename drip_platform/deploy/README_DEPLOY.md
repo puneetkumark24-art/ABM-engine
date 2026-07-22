@@ -63,6 +63,15 @@ to the warehouse — without changing the domain code.
    and switch a campaign's transport off `dry_run`. Until all of that, **nothing
    sends** — the platform is safe to run against real data in intelligence mode.
 
+**Alternative: Mailchimp Transactional (Mandrill)**, ported from the legacy
+`decimal_abm` system (AI Intelligence Layer Sprint 4) as the native Marketing
+engine's own send path — not an external CRM bridge (HubSpot stays out
+entirely per the 2026-07-21 decision to build CRM/Marketing natively). Set
+`ENABLE_MANDRILL_TRANSPORT=true`, `MANDRILL_API_KEY`, `MANDRILL_FROM_EMAIL`,
+`MANDRILL_FROM_NAME`, then call `delivery_ext.try_register_mandrill()` at
+worker boot and switch a campaign's transport to `mandrill`. Same
+inert-until-opted-in guarantee as SES.
+
 ## Files
 `Dockerfile` · `docker-compose.yml` · `entrypoint_api.sh` · `bootstrap.sql` ·
 `worker_main.py` · `scheduler_main.py` · `requirements-deploy.txt` · `.env.example`

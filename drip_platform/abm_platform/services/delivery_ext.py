@@ -40,6 +40,78 @@ def try_register_ses() -> tuple[bool, str]:
     return True, f"SES transport registered (region {region})"
 
 
+# ── Mailchimp Transactional (Mandrill) adapter ─────────────────
+# Ported from decimal_abm/abm_engine/channels/mailchimp_channel.py — that
+# module has real, working send() code already exercised in the legacy
+# system; per the user's explicit direction ("we are building ABM and
+# Mailchimp internally... choose it" — 2026-07-21), the native Marketing
+# engine (this delivery.py) is the system of record and HubSpot stays out
+# entirely, but Mandrill remains the one proven way anything actually
+# leaves the system today, so it's ported in as a registered transport of
+# the native send path — not as an external CRM integration. Same
+# opt-in-flag discipline as try_register_ses() above: inert by
+# construction until ENABLE_MANDRILL_TRANSPORT=true and a key are both
+# present, and uses httpx (already a project dependency, per
+# requirements.txt) rather than adding a new SDK dependency.
+MANDRILL_ENV_FLAG = "ENABLE_MANDRILL_TRANSPORT"   # must be "true"
+MANDRILL_API_KEY_ENV = "MANDRILL_API_KEY"
+MANDRILL_BASE_URL = "https://mandrillapp.com/api/1.0"
+
+
+def try_register_mandrill() -> tuple[bool, str]:
+    import os
+    if os.environ.get(MANDRILL_ENV_FLAG, "").lower() != "true":
+        return False, f"{MANDRILL_ENV_FLAG} not set — staying dry-run (deliberate)"
+    api_key = os.environ.get(MANDRILL_API_KEY_ENV)
+    if not api_key:
+        return False, f"{MANDRILL_API_KEY_ENV} not set"
+    try:
+        import httpx  # noqa: F401
+    except ImportError:
+        return False, "httpx not installed"
+
+    from_email = os.environ.get("MANDRILL_FROM_EMAIL", "noreply@example.invalid")
+    from_name = os.environ.get("MANDRILL_FROM_NAME", "Decimal Technologies")
+
+    def _mandrill_transport(req: "mx.SendRequest") -> str:
+        """fn(send_request) -> provider_message_id, raises on failure — same
+        contract every delivery.py transport uses. Mirrors
+        MailchimpChannel.send()'s payload shape from decimal_abm, but
+        raises instead of returning a {success, error} dict, since
+        delivery.enqueue()/retry_failed() already handle exceptions from
+        every registered transport uniformly."""
+        import httpx
+        payload = {
+            "key": api_key,
+            "message": {
+                "html": (req.body or "").replace("\n", "<br>"),
+                "text": req.body or "",
+                "subject": req.subject or "",
+                "from_email": from_email,
+                "from_name": from_name,
+                "to": [{"email": req.to_email, "type": "to"}],
+                "track_opens": True,
+                "track_clicks": False,
+                "metadata": {"drip_message_id": req.message_id},
+            },
+        }
+        with httpx.Client(timeout=20) as client:
+            r = client.post(f"{MANDRILL_BASE_URL}/messages/send.json", json=payload)
+        r.raise_for_status()
+        result = r.json()
+        if not (isinstance(result, list) and result):
+            raise RuntimeError(f"Mandrill: unexpected response shape: {result!r}")
+        item = result[0]
+        status = item.get("status", "")
+        if status not in ("sent", "queued"):
+            raise RuntimeError(f"Mandrill rejected: status={status} "
+                               f"reject_reason={item.get('reject_reason', '')}")
+        return item.get("_id", "")
+
+    delivery.register_transport("mandrill", _mandrill_transport)
+    return True, "Mandrill transport registered"
+
+
 # ── retry with backoff ───────────────────────────────────────
 MAX_ATTEMPTS = 3
 BACKOFF_MINUTES = [5, 30, 120]

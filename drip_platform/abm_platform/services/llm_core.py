@@ -44,6 +44,19 @@ def register_prompt(name: str, template: str, note: str = "") -> dict:
     return entry
 
 
+def ensure_prompt(name: str, template: str, note: str = "") -> dict:
+    """Like register_prompt, but a no-op if `name` already has an active
+    version — used by ai_orchestrator agents that call this on every
+    run_agent() invocation; without this, register_prompt's "always add a
+    new version" behavior would inflate the registry by one version per
+    call, defeating the point of versioning (meaningful, reviewable changes
+    only)."""
+    existing = get_prompt(name)
+    if existing is not None:
+        return existing
+    return register_prompt(name, template, note)
+
+
 def get_prompt(name: str, version: int | None = None) -> dict | None:
     versions = _REGISTRY.get(name, [])
     if version is not None:
@@ -103,12 +116,29 @@ register_prompt(
 
 # ── provider adapters ────────────────────────────────────────
 _PRICES = {  # USD per 1M tokens (input, output) — coarse estimates for tracking
+    "qwen-turbo": (0.05, 0.2), "qwen-plus": (0.4, 1.2), "qwen-max": (1.6, 6.4),
     "anthropic": (3.0, 15.0), "openai": (2.5, 10.0), "gemini": (1.25, 5.0)}
+
+# Qwen model routing by tier (A/B/C/D) — used by ai_orchestrator.py, kept
+# here alongside _PRICES since both are "which Qwen model for this call"
+# facts and belong in the same place, not split across two files.
+QWEN_MODEL_FOR_TIER = {
+    "A": os.environ.get("QWEN_MODEL_TURBO", "qwen-turbo"),
+    "B": os.environ.get("QWEN_MODEL_PLUS", "qwen-plus"),
+    "C": os.environ.get("QWEN_MODEL_PLUS", "qwen-plus"),
+    "D": os.environ.get("QWEN_MODEL_MAX", "qwen-max"),
+}
 
 
 def active_provider() -> tuple[str, str] | None:
-    """(provider, key) for the first configured provider, else None."""
-    for prov, env in (("anthropic", "ANTHROPIC_API_KEY"),
+    """(provider, key) for the first configured provider, else None. Qwen is
+    checked FIRST — per the platform's explicit direction ("we are NOT
+    running models locally... USE QWEN API" — Phase 4 of the AI Intelligence
+    Layer architecture brief), Qwen is the intended primary provider;
+    Anthropic/OpenAI/Gemini remain as fallback options this module already
+    supported, not the default choice going forward."""
+    for prov, env in (("qwen", "QWEN_API_KEY"),
+                      ("anthropic", "ANTHROPIC_API_KEY"),
                       ("openai", "OPENAI_API_KEY"),
                       ("gemini", "GEMINI_API_KEY")):
         key = os.environ.get(env)
@@ -156,7 +186,26 @@ def _call_gemini(key: str, system: str, user: str) -> tuple[str, int, int, str]:
     return text, u.get("promptTokenCount", 0), u.get("candidatesTokenCount", 0), model
 
 
-_ADAPTERS = {"anthropic": _call_anthropic, "openai": _call_openai, "gemini": _call_gemini}
+def _call_qwen(key: str, system: str, user: str) -> tuple[str, int, int, str]:
+    """DashScope / Alibaba Cloud Model Studio, OpenAI-compatible chat-completions
+    surface, called via the same plain-urllib style as the other adapters —
+    no SDK dependency, matching this module's existing design choice.
+    QWEN_MODEL selects the concrete model name; default 'qwen-plus' (Tier B/C
+    default per ai_orchestrator.QWEN_MODEL_FOR_TIER — the orchestrator may
+    override the model choice per-tier by setting QWEN_MODEL before calling
+    if it needs qwen-turbo/qwen-max instead)."""
+    model = os.environ.get("QWEN_MODEL", "qwen-plus")
+    base_url = os.environ.get("QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
+    out = _post(f"{base_url}/chat/completions",
+                {"Authorization": f"Bearer {key}"},
+                {"model": model, "messages": [{"role": "system", "content": system},
+                                              {"role": "user", "content": user}]})
+    text = out["choices"][0]["message"]["content"]
+    u = out.get("usage", {})
+    return text, u.get("prompt_tokens", 0), u.get("completion_tokens", 0), model
+
+
+_ADAPTERS = {"qwen": _call_qwen, "anthropic": _call_anthropic, "openai": _call_openai, "gemini": _call_gemini}
 
 # test hook: inject a fake provider without keys
 _TEST_PROVIDER = None
@@ -170,29 +219,50 @@ def set_test_provider(fn) -> None:
 
 def call_llm(db: Session, prompt_name: str, variables: dict,
              purpose: str = "general", system: str = "",
-             version: int | None = None) -> dict:
+             version: int | None = None, model_override: str | None = None) -> dict:
     """The single entrypoint. Renders the versioned prompt, calls the active
     provider (or honest dry-run), logs cost/tokens/latency. Returns
-    {text, live, provider, prompt_version, call_id}."""
+    {text, live, provider, prompt_version, call_id}.
+
+    model_override: used by ai_orchestrator.py to select qwen-turbo/plus/max
+    per agent tier without every caller needing to know provider-specific env
+    var names. Implemented as a temporary QWEN_MODEL env override around this
+    one call, restored immediately after — safe for this codebase's current
+    single-process synchronous-request deployment model; NOTE for future
+    multi-worker/async deployment: this becomes a real race condition once
+    concurrent requests can interleave, and should move to a proper
+    per-call parameter threaded through _call_qwen instead."""
     user, pv = render_prompt(prompt_name, variables, version)
     t0 = time.perf_counter()
     prov = active_provider()
 
-    if _TEST_PROVIDER is not None:
-        text = _TEST_PROVIDER(system, user)
-        provider, model, ti, to, status, err, live = "test", "test-model", len(user)//4, len(text)//4, "ok", None, True
-    elif prov is None:
-        # HONEST dry-run: deterministic fallback, clearly marked
-        text = f"[DRY-RUN — no LLM key configured] prompt={prompt_name} v{pv}"
-        provider, model, ti, to, status, err, live = "dry-run", None, 0, 0, "dry-run", None, False
-    else:
-        provider, key = prov
-        try:
-            text, ti, to, model = _ADAPTERS[provider](key, system, user)
-            status, err, live = "ok", None, True
-        except Exception as e:  # noqa: BLE001
-            text = f"[LLM ERROR] {type(e).__name__}"
-            model, ti, to, status, err, live = None, 0, 0, "error", str(e)[:500], False
+    _prior_model_env = None
+    if model_override and prov and prov[0] == "qwen":
+        _prior_model_env = os.environ.get("QWEN_MODEL")
+        os.environ["QWEN_MODEL"] = model_override
+
+    try:
+        if _TEST_PROVIDER is not None:
+            text = _TEST_PROVIDER(system, user)
+            provider, model, ti, to, status, err, live = "test", "test-model", len(user)//4, len(text)//4, "ok", None, True
+        elif prov is None:
+            # HONEST dry-run: deterministic fallback, clearly marked
+            text = f"[DRY-RUN — no LLM key configured] prompt={prompt_name} v{pv}"
+            provider, model, ti, to, status, err, live = "dry-run", None, 0, 0, "dry-run", None, False
+        else:
+            provider, key = prov
+            try:
+                text, ti, to, model = _ADAPTERS[provider](key, system, user)
+                status, err, live = "ok", None, True
+            except Exception as e:  # noqa: BLE001
+                text = f"[LLM ERROR] {type(e).__name__}"
+                model, ti, to, status, err, live = None, 0, 0, "error", str(e)[:500], False
+    finally:
+        if model_override and prov and prov[0] == "qwen":
+            if _prior_model_env is None:
+                os.environ.pop("QWEN_MODEL", None)
+            else:
+                os.environ["QWEN_MODEL"] = _prior_model_env
 
     ms = int((time.perf_counter() - t0) * 1000)
     pin, pout = _PRICES.get(provider, (0.0, 0.0))
@@ -201,7 +271,7 @@ def call_llm(db: Session, prompt_name: str, variables: dict,
                      prompt_version=pv, purpose=purpose, tokens_in=ti, tokens_out=to,
                      cost_usd=cost, latency_ms=ms, status=status, error=err)
     db.add(row); db.commit()
-    return {"text": text, "live": live, "provider": provider,
+    return {"text": text, "live": live, "provider": provider, "model": model,
             "prompt_version": pv, "call_id": row.id, "cost_usd": cost}
 
 

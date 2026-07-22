@@ -1,11 +1,28 @@
 """Module 21 — Notification Engine: in-app inbox + preferences + quiet hours.
 NOT-001: quiet hours respected for non-urgent. NOT-002: urgent bypasses.
-Channel adapters beyond in_app (Slack/WhatsApp/email) plug in later behind
-the same send() surface."""
+
+AI Intelligence Layer Sprint 6 wires the "Channel adapters beyond in_app
+plug in later" promise this docstring always made: send() now dispatches
+to a registered external channel adapter (Slack, email) when one exists
+for the requested channel, using the exact same pluggable-adapter
+convention as every other seam in this codebase (delivery.register_transport,
+ai_gen.register_model, llm_core's provider adapters) — register_channel()
+below, inert by default. The in_app row is ALWAYS written first and stays
+the source of truth (the inbox never depends on an external channel
+succeeding); external delivery outcome is recorded in payload['_external']
+rather than a schema migration, since it's diagnostic metadata, not a new
+first-class fact about the notification."""
 from __future__ import annotations
 from datetime import datetime
 from sqlalchemy.orm import Session
 import models_ext as mx
+
+# pluggable channel adapters: name -> fn(notification) -> provider_ref (str, raises on failure)
+_CHANNEL_ADAPTERS: dict[str, object] = {}
+
+
+def register_channel(name: str, fn) -> None:
+    _CHANNEL_ADAPTERS[name] = fn
 
 
 def get_prefs(db: Session, user: str) -> mx.NotifyPref:
@@ -43,6 +60,20 @@ def send(db: Session, user: str, kind: str, payload: dict | None = None,
     else:
         n.status = "sent"
     db.add(n); db.commit()
+
+    # external channel dispatch — best-effort, never blocks the in_app write
+    # above (which already committed) and never raises out of send().
+    if n.status == "sent" and channel != "in_app":
+        fn = _CHANNEL_ADAPTERS.get(channel)
+        if fn is None:
+            n.payload = {**(n.payload or {}), "_external": {"delivered": False, "reason": f"no adapter registered for '{channel}'"}}
+        else:
+            try:
+                ref = fn(n)
+                n.payload = {**(n.payload or {}), "_external": {"delivered": True, "provider_ref": ref}}
+            except Exception as e:  # noqa: BLE001
+                n.payload = {**(n.payload or {}), "_external": {"delivered": False, "reason": str(e)[:300]}}
+        db.add(n); db.commit()
     return n
 
 
