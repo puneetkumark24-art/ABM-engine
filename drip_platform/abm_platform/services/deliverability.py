@@ -4,9 +4,23 @@ rolling reputation from bounce/complaint rates, a can_send() volume gate for
 real transports (dry_run bypasses it), and the full analytics rate card:
 delivery/bounce/open/click/CTR/CTOR/spam/unsub/reply rates.
 
-Recommendation encoded here: when a real transport is registered, Amazon SES
-is the intended first adapter (cost + deliverability), behind the same
-delivery.register_transport() interface — nothing else changes."""
+TRANSPORT RECOMMENDATION — REVISED, read before enabling SES
+------------------------------------------------------------
+This module previously recommended Amazon SES as the first real adapter on
+cost + deliverability grounds. That holds for transactional mail. It does NOT
+hold for the cold 1:1 B2B outreach this platform runs: SES, Mandrill,
+SendGrid, Mailgun, Postmark and Resend all prohibit unsolicited/cold outreach
+in their acceptable-use policies, because they share IP pools where one
+tenant's complaints degrade every other tenant. SendGrid was already flagged
+as an AUP violation earlier in this project.
+
+Use a real Google Workspace / Microsoft 365 mailbox instead — see
+`delivery_gmail.py`. Same register_transport() seam; nothing here changes.
+
+One caveat that DOES change here: WARMUP_CAPS below tops out at 100k/day,
+which is right for SES and far too high for a Workspace mailbox doing cold
+outreach (practical ceiling ~40-50/day/mailbox, technical ~2,000). Cap the
+domain's warmup_stage accordingly and let reputation govern, not the ladder."""
 from __future__ import annotations
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
