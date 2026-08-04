@@ -34,9 +34,22 @@ def get_organization(org_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{org_id}/account", response_model=schemas.AccountIntelligenceOut)
 def get_account_intelligence(org_id: str, db: Session = Depends(get_db)):
+    org = db.get(models.Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Organization not found")
     acc = db.get(models.AccountIntelligence, org_id)
     if not acc:
-        raise HTTPException(404, "This organization has no sales/account intelligence record")
+        # Get-or-create, matching every other consumer of this table
+        # (bd_parity.py's score-save, engagement.py's rescoring, the ETL
+        # migration). This was the one place that 404'd instead -- meaning
+        # the Overview tab, the FIRST thing Account 360 loads, was broken
+        # for every brand-new organization until someone happened to save a
+        # score first. A fresh account with sensible defaults is correct;
+        # a 404 on the landing tab of a just-created record is not.
+        acc = models.AccountIntelligence(org_id=org_id)
+        db.add(acc)
+        db.commit()
+        db.refresh(acc)
     return acc
 
 

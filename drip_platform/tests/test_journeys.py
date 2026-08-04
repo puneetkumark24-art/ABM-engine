@@ -51,7 +51,14 @@ def run():
     j = jn.define_journey(db, "Onboarding", nodes)
     check("journey defined", j.entry_node_id == "n1")
 
-    e = jn.enroll(db, j.id, "person-1")
+    org = models.Organization(canonical_name="Journey Bank")
+    db.add(org); db.commit()
+    p1 = models.Person(full_name="Journey One", current_org_id=org.id,
+                       primary_email="j1@example.invalid", consent_status="opted_in")
+    p2 = models.Person(full_name="Journey Two", current_org_id=org.id,
+                       primary_email="j2@example.invalid", consent_status="opted_in")
+    db.add_all([p1, p2]); db.commit()
+    e = jn.enroll(db, j.id, p1.id)
     check("enrolled at entry", e.current_node_id == "n1")
 
     t0 = datetime.utcnow()
@@ -59,6 +66,9 @@ def run():
     r1 = jn.tick(db, now=t0)
     db.refresh(e)
     check("tick1 sent welcome", r1["sends"] == 1)
+    check("tick1 created a real dry-run email message",
+          db.query(models_ext.EmailMessage).filter_by(person_id=p1.id).count() == 1)
+    check("tick1 closed ABM engagement loop", r1["accounts_rescored"] == 1)
     check("tick1 parked at wait n3-target", e.current_node_id == "n3" and e.status == "active")
     check("tick1 scheduled +24h", e.next_action_at >= t0 + timedelta(hours=23))
 
@@ -75,13 +85,14 @@ def run():
     check("history records send,wait,send,branch", actions.count("send") == 2 and "branch" in actions and "wait" in actions)
 
     # ── second person who does NOT open -> nudge path ──
-    e2 = jn.enroll(db, j.id, "person-2", now=t0)
+    e2 = jn.enroll(db, j.id, p2.id, now=t0)
     jn.tick(db, now=t0)  # send + park at wait
     jn.tick(db, now=t0 + timedelta(hours=25), signal=lambda en, n: False)
     db.refresh(e2)
     branch_hist = [h for h in e2.history if h["action"] == "branch"]
     check("non-opener took 'no' branch", branch_hist and branch_hist[0]["result"] is False)
     check("non-opener completed", e2.status == "completed")
+    check("journey enrollment is idempotent", jn.enroll(db, j.id, p2.id) is not None)
 
     # ── dynamic content blocks ──
     blocks = [
@@ -101,7 +112,7 @@ def run():
     for _ in range(4000):
         counts[jn.pick_variant(variants, rng=rng)] += 1
     check("multivariate supports 3 arms", all(counts[k] > 0 for k in "ABC"))
-    check("multivariate respects weights (C≈2x A)", counts["C"] > counts["A"] * 1.4)
+    check("multivariate respects weights (C approx 2x A)", counts["C"] > counts["A"] * 1.4)
 
     passed = sum(1 for _, ok in _results if ok); total = len(_results)
     is_pg = db.bind.dialect.name == "postgresql"

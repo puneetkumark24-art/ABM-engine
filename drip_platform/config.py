@@ -45,6 +45,32 @@ class Settings:
         self.service_name = os.environ.get("SERVICE_NAME", "drip-api")
         self.log_level = os.environ.get("LOG_LEVEL", "INFO")
 
+    def validate_runtime(self) -> None:
+        """Fail closed when a deployment declares itself production.
+
+        Startup-time guard, not a lint: `APP_ENV=prod` with any of dev-mode
+        auth-off, the default JWT secret, a SQLite DATABASE_URL, a missing
+        ADMIN_PASSWORD, or a wildcard/empty CORS allowlist means the process
+        refuses to boot rather than silently serving unsafely-configured prod
+        traffic. No-op for every other APP_ENV value (dev/test/staging).
+        """
+        if self.env.lower() not in {"prod", "production"}:
+            return
+        errors = []
+        if not self.auth_enforced:
+            errors.append("AUTH_ENFORCED must be true")
+        if self.jwt_secret == "drip-dev-jwt-secret-change-me" or len(self.jwt_secret or "") < 32:
+            errors.append("JWT_SECRET must be a non-default secret of at least 32 characters")
+        if self.database_url.startswith("sqlite"):
+            errors.append("production DATABASE_URL must use PostgreSQL")
+        if not os.environ.get("ADMIN_PASSWORD"):
+            errors.append("ADMIN_PASSWORD must be configured")
+        origins = [x.strip() for x in os.environ.get("CORS_ORIGINS", "").split(",") if x.strip()]
+        if not origins or "*" in origins:
+            errors.append("CORS_ORIGINS must be an explicit production allowlist")
+        if errors:
+            raise RuntimeError("Unsafe production configuration: " + "; ".join(errors))
+
     def redacted(self) -> dict:
         """Safe-to-log view (secrets masked) — used by /health/ready."""
         def mask(v):

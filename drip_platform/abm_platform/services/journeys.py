@@ -18,9 +18,13 @@ Also provides:
 """
 from __future__ import annotations
 import random
+import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 import models_s3 as m3
+import models
+import models_ext as mx
+from . import marketing, marketing_ext, delivery, attribution, engagement
 
 _SEND, _WAIT, _BRANCH, _EXIT = "send", "wait", "branch", "exit"
 _NODE_TYPES = {_SEND, _WAIT, _BRANCH, _EXIT}
@@ -53,6 +57,17 @@ def enroll(db: Session, journey_id: str, person_id: str,
     j = db.get(m3.JourneyDef, journey_id)
     if j is None:
         raise ValueError("journey not found")
+    person = db.get(models.Person, person_id)
+    if person is None:
+        raise ValueError("person not found")
+    sendable, reason = marketing.is_sendable(db, person)
+    if not sendable:
+        raise ValueError(f"person is not contactable: {reason}")
+    existing = (db.query(m3.JourneyEnrollment)
+                .filter_by(journey_id=journey_id, person_id=person_id, status="active")
+                .first())
+    if existing:
+        return existing
     now = now or datetime.utcnow()
     e = m3.JourneyEnrollment(journey_id=journey_id, person_id=person_id,
                              current_node_id=j.entry_node_id, next_action_at=now,
@@ -65,17 +80,30 @@ def _node_map(j: m3.JourneyDef) -> dict:
     return {n["id"]: n for n in (j.nodes or [])}
 
 
+def _message_id(enrollment_id: str, node_id: str) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"drip:journey:{enrollment_id}:{node_id}"))
+
+
+def _engaged(db: Session, enrollment: m3.JourneyEnrollment, node: dict) -> bool:
+    wanted = "open" if node.get("on") == "opened" else "click"
+    send_nodes = [h.get("node") for h in (enrollment.history or []) if h.get("action") == "send"]
+    ids = [_message_id(enrollment.id, n) for n in send_nodes if n]
+    return bool(ids and db.query(mx.DeliveryEvent).filter(
+        mx.DeliveryEvent.message_id.in_(ids), mx.DeliveryEvent.event_type == wanted).first())
+
+
 def tick(db: Session, now: datetime | None = None,
          signal=None, max_batch: int = 500) -> dict:
     """Advance due enrollments. `signal(enrollment, node) -> bool` answers branch
     questions (did the person open/click); defaults to False (no engagement)."""
     now = now or datetime.utcnow()
-    signal = signal or (lambda e, n: False)
+    signal = signal or (lambda e, n: _engaged(db, e, n))
     due = (db.query(m3.JourneyEnrollment)
            .filter(m3.JourneyEnrollment.status == "active",
                    m3.JourneyEnrollment.next_action_at <= now)
            .limit(max_batch).all())
-    sent = advanced = completed = 0
+    sent = advanced = completed = blocked = existing = 0
+    touched_orgs: set[str] = set()
     for e in due:
         j = db.get(m3.JourneyDef, e.journey_id)
         if j is None or j.status != "active":
@@ -91,10 +119,46 @@ def tick(db: Session, now: datetime | None = None,
             t = node["type"]
             hist = list(e.history or [])
             if t == _SEND:
+                person = db.get(models.Person, e.person_id)
+                ok, reason = marketing.is_sendable(db, person)
+                if not ok:
+                    hist.append({"at": str(now), "node": node["id"], "action": "blocked",
+                                 "reason": reason})
+                    e.history = hist; e.status = "exited"; e.current_node_id = None
+                    blocked += 1
+                    break
                 variant = pick_variant(node.get("variants")) if node.get("variants") else None
+                mid = _message_id(e.id, node["id"])
+                msg = db.get(mx.EmailMessage, mid)
+                created = msg is None
+                if msg is None:
+                    msg = mx.EmailMessage(id=mid, campaign_id=None, person_id=person.id,
+                                          to_email=person.primary_email, variant=variant or "control")
+                    db.add(msg); db.flush()
+                    subject = marketing_ext.render_merge(db, node.get("subject") or j.name, person)
+                    raw_body = node.get("body") or node.get("content") or ""
+                    body = marketing_ext.render_merge(db, raw_body, person)
+                    req = delivery.enqueue(db, message_id=mid, to_email=person.primary_email,
+                                           subject=subject, body=body, transport="dry_run")
+                    if req.status != "sent":
+                        hist.append({"at": str(now), "node": node["id"], "action": "blocked",
+                                     "reason": f"delivery_{req.status}"})
+                        e.history = hist; e.status = "exited"; e.current_node_id = None
+                        blocked += 1
+                        break
+                    msg.status = "sent"; msg.sent_at = now
+                    attribution.record_touch(db, org_id=person.current_org_id,
+                                             person_id=person.id, channel="email",
+                                             campaign_id=j.id, occurred_at=now)
+                    if person.current_org_id:
+                        touched_orgs.add(person.current_org_id)
+                else:
+                    existing += 1
                 hist.append({"at": str(now), "node": node["id"], "action": "send",
-                             "variant": variant})
-                e.history = hist; sent += 1
+                             "variant": variant, "message_id": mid})
+                e.history = hist
+                if created:
+                    sent += 1
                 nxt = node.get("next")
             elif t == _WAIT:
                 hist.append({"at": str(now), "node": node["id"], "action": "wait",
@@ -124,8 +188,11 @@ def tick(db: Session, now: datetime | None = None,
                 e.current_node_id = nxt
         db.add(e)
     db.commit()
+    for org_id in touched_orgs:
+        engagement.rollup_org(db, org_id)
     return {"processed": len(due), "sends": sent, "advanced": advanced,
-            "completed": completed}
+            "completed": completed, "blocked": blocked,
+            "existing_skipped": existing, "accounts_rescored": len(touched_orgs)}
 
 
 # ── dynamic content blocks ───────────────────────────────────

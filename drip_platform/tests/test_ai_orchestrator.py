@@ -173,3 +173,14 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+def test_ai_orchestrator():
+    # run() prints a report and calls sys.exit(1) on any failed check (script
+    # mode). Under pytest that bare SystemExit needs converting into a normal
+    # assertion, or a failure here would abort the whole pytest session
+    # instead of reporting as one failing test.
+    try:
+        run()
+    except SystemExit as e:
+        assert not e.code, f"test_ai_orchestrator reported failing checks (exit code {e.code})"

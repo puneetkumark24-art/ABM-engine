@@ -15,7 +15,22 @@ from database import Base, engine, SessionLocal  # noqa: E402
 import models  # noqa: E402
 import models_ext as mx  # noqa: E402
 import models_p10 as p10  # noqa: E402
-import models_p11, models_p12  # noqa: E402,F401  (metadata completeness for Postgres drop/create)
+# Full model-module set so Base.metadata.drop_all() below knows about every
+# table that migrations may have created (incl. ones with FKs back into
+# tables this file touches, e.g. crm2's `quotes.opportunity_id`). Running
+# against a shared, already-`alembic upgrade head`-ed Postgres (real CI's
+# actual setup: migrations run once, then every script-style suite does its
+# own drop_all/create_all in the same process) surfaced a real failure here:
+# a partial import list left `quotes` outside Base.metadata, so drop_all
+# tried to drop `opportunities` first and Postgres correctly refused
+# ("DependentObjectsStillExist"). The previous partial list (models_p11,
+# models_p12 only) happened to work only when some other, earlier-collected
+# test file had already imported the missing modules first -- an
+# accidental, order-dependent pass, not a real guarantee.
+import models_ai, models_audit, models_collectors, models_crm2  # noqa: E402,F401
+import models_final, models_intel, models_jobs, models_llm  # noqa: E402,F401
+import models_p11, models_p12, models_s3, models_s6, models_s8  # noqa: E402,F401
+import models_segments, models_tenant  # noqa: E402,F401
 from sequences import engine as seq_engine  # noqa: E402
 from abm_platform.services import (  # noqa: E402
     engagement, pipeline, merge, timeline, orchestrator, delivery, marketing,
@@ -168,6 +183,27 @@ def run():
     enr2.next_run_at = datetime.utcnow() - timedelta(minutes=1); db.commit()
     r2 = orchestrator.run_tick(db, respect_send_window=False)
     check("E2E c-suite draft held for human (not sent)", r2["held_for_human"] >= 1)
+
+    # The c-suite enrollment is still "due" (current_step never advanced,
+    # since advance() only runs after dispatch) -- a repeated tick before the
+    # human reviews it must NOT generate a second pending draft for the same
+    # person+step.
+    pending_before = db.query(models.Draft).filter_by(person_id=p2.id, status="pending").count()
+    r2_repeat = orchestrator.run_tick(db, respect_send_window=False)
+    pending_after = db.query(models.Draft).filter_by(person_id=p2.id, status="pending").count()
+    check("E2E repeated tick does not duplicate held draft",
+          r2_repeat["existing_drafts_skipped"] >= 1 and pending_after == pending_before)
+
+    # human approves the held c-suite draft -> next tick must dispatch it.
+    # This was the "approval dead end": approving a draft only ever flipped
+    # its status to `approved` with nothing downstream ever acting on it.
+    held = (db.query(models.Draft).filter_by(person_id=p2.id, status="pending")
+            .order_by(models.Draft.created_at.desc()).first())
+    held.status = "approved"; held.reviewed_at = datetime.utcnow(); db.commit()
+    r3 = orchestrator.run_tick(db, respect_send_window=False)
+    check("E2E human-approved draft is dispatched on next tick", r3["approved_dispatched"] == 1)
+    check("E2E human-approved draft becomes sent", held.status == "sent")
+    check("E2E human-approved sequence advances once", r3["advanced"] >= 1)
 
     passed = sum(1 for _, ok in _results if ok)
     total = len(_results)

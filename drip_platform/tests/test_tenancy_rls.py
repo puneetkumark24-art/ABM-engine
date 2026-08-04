@@ -23,6 +23,15 @@ from auth import issue_token, verify_token, Principal  # noqa: E402
 from webhook_security import verify_hmac_sha256  # noqa: E402
 from fastapi import HTTPException  # noqa: E402
 
+def _real_database_url() -> str:
+    """The DATABASE_URL as CI/the shell actually configured it, immune to
+    other test modules reassigning os.environ["DATABASE_URL"] for their own
+    isolated temp DB mid-session (see conftest.py for how this is captured,
+    and why a live os.environ.get("DATABASE_URL") call here previously caused
+    this suite's entire RLS-isolation proof to silently no-op and still
+    report a pass)."""
+    return os.environ.get("_ORIGINAL_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
+
 _results = []
 
 
@@ -36,12 +45,33 @@ TB = "22222222-2222-2222-2222-222222222222"
 
 
 def run_rls():
-    url = os.environ.get("DATABASE_URL", "")
+    url = _real_database_url()
     if not url.startswith("postgresql"):
         print("… RLS checks skipped (needs PostgreSQL; RLS unavailable on SQLite)")
         return
     admin = sa.create_engine(url)   # postgres = superuser (seeds, bypasses RLS)
     with admin.begin() as c:
+        # Re-assert the tenancy DDL on `organizations` before seeding, rather
+        # than trusting it's still there from whenever the migration last ran.
+        # This suite shares one live Postgres with every other script-style
+        # test in the same CI `pytest tests/` process, and several of them
+        # (test_engine_e2e.py and others) call Base.metadata.drop_all() +
+        # create_all() -- which DOES drop/recreate `organizations` (it's an
+        # ORM-mapped table) but knows nothing about tenant_id/RLS (those only
+        # exist via migration d1a2b3c4e5f6's raw SQL, never as an ORM column),
+        # silently erasing them. Caught by actually running this suite after
+        # test_engine_e2e.py in one process against a fresh Postgres -- without
+        # this, the RLS half either false-passed (when DRIP_ALLOW_PG_TESTS was
+        # unset, guard-skipping it entirely) or would now hard-fail depending
+        # on file collection order. Idempotent: matches the migration exactly.
+        c.execute(sa.text(
+            "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_id uuid"))
+        c.execute(sa.text("ALTER TABLE organizations ENABLE ROW LEVEL SECURITY"))
+        c.execute(sa.text("ALTER TABLE organizations FORCE ROW LEVEL SECURITY"))
+        c.execute(sa.text("DROP POLICY IF EXISTS tenant_isolation ON organizations"))
+        c.execute(sa.text("""CREATE POLICY tenant_isolation ON organizations
+            USING ( coalesce(current_setting('app.current_tenant', true), '') = ''
+                    OR tenant_id::text = current_setting('app.current_tenant', true) )"""))
         # non-superuser app role
         c.execute(sa.text("""
             DO $$ BEGIN
@@ -137,7 +167,7 @@ def run():
     # SAFETY GUARD: the RLS half creates roles/policies and writes probe rows.
     # It must ONLY run on a disposable test database, never a production DB.
     # Set DRIP_ALLOW_PG_TESTS=1 explicitly when DATABASE_URL is a scratch PG.
-    url = os.environ.get("DATABASE_URL", "")
+    url = _real_database_url()
     if url.startswith("postgresql") and not os.environ.get("DRIP_ALLOW_PG_TESTS"):
         print("SKIP - PG tenancy suite guarded: set DRIP_ALLOW_PG_TESTS=1 on a "
               "DISPOSABLE test database (never your production drip DB).")
@@ -151,7 +181,7 @@ def run():
     run_webhook()
     passed = sum(1 for _, ok in _results if ok)
     total = len(_results)
-    db = "postgresql" if os.environ.get("DATABASE_URL", "").startswith("postgresql") else "sqlite"
+    db = "postgresql" if _real_database_url().startswith("postgresql") else "sqlite"
     print(f"\n{passed}/{total} checks passed  [DB: {db}]")
     return passed == total
 

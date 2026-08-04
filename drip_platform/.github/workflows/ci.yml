@@ -21,6 +21,13 @@ jobs:
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/drip_ci
+      # Safe here ONLY because this Postgres is the disposable per-run service
+      # container above, never a real/production database: test_tenancy_rls.py
+      # refuses to run its RLS-isolation half without this flag, specifically
+      # to stop someone pointing it at a real DB by accident. Without it, CI
+      # was silently skipping the actual multi-tenant isolation proof and
+      # only running the auth/webhook half.
+      DRIP_ALLOW_PG_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

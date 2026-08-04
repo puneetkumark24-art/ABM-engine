@@ -246,20 +246,39 @@ def run():
     check("21 morning flush delivers held", flushed >= 1)
 
     # ── 22 attribution ──
-    t1 = attribution.record_touch(db, org_id=org.id, channel="email", campaign_id="campA",
+    # Deliberately a DEDICATED org, not the shared `org` used above. These
+    # checks assert exact credit splits over exactly three touches, so they
+    # only hold if nothing else in this file has touched the same account.
+    # `marketing.send_campaign` (line ~75, sending to p1/p2/p3 who all belong
+    # to `org`) now records a real attribution touch per recipient -- correct
+    # behaviour, and the point of closing the marketing→ABM loop -- which
+    # silently added three more touches to `org` and broke the arithmetic
+    # these checks depend on. Isolating the account keeps this testing the
+    # attribution MODELS rather than the incidental touch history of a
+    # fixture shared with the campaign section.
+    attr_org = models.Organization(canonical_name="Attribution Fixture Bank")
+    db.add(attr_org); db.commit()
+    t1 = attribution.record_touch(db, org_id=attr_org.id, channel="email", campaign_id="campA",
                                   occurred_at=datetime.utcnow() - timedelta(days=10))
-    t2 = attribution.record_touch(db, org_id=org.id, channel="linkedin", campaign_id="campB",
+    t2 = attribution.record_touch(db, org_id=attr_org.id, channel="linkedin", campaign_id="campB",
                                   occurred_at=datetime.utcnow() - timedelta(days=5))
-    t3 = attribution.record_touch(db, org_id=org.id, channel="event", campaign_id="campA",
+    t3 = attribution.record_touch(db, org_id=attr_org.id, channel="event", campaign_id="campA",
                                   occurred_at=datetime.utcnow() - timedelta(days=1))
-    lin = attribution.compute(db, org.id, "meeting", model="linear")
+    lin = attribution.compute(db, attr_org.id, "meeting", model="linear")
     check("22 linear splits evenly & sums to 1",
           abs(sum(lin.credit.values()) - 1.0) < 1e-6 and len(lin.credit) == 3)
-    w = attribution.compute(db, org.id, "meeting", model="w_shaped")
+    w = attribution.compute(db, attr_org.id, "meeting", model="w_shaped")
     check("22 w-shaped: 30/40/30", abs(w.credit[t1.id] - 0.3) < 1e-6
           and abs(w.credit[t2.id] - 0.4) < 1e-6 and abs(w.credit[t3.id] - 0.3) < 1e-6)
     by_camp = attribution.campaign_credit(db, w.id)
     check("22 campaign rollup", abs(by_camp["campA"] - 0.6) < 1e-6 and abs(by_camp["campB"] - 0.4) < 1e-6)
+
+    # And the new behaviour itself is asserted, rather than merely worked
+    # around: a dry-run campaign send must leave attribution touches on the
+    # recipients' account, which is what makes marketing spend visible to ABM
+    # account scoring at all.
+    camp_touches = db.query(mx.Touch).filter_by(org_id=org.id, campaign_id=camp7.id).count()
+    check("22 campaign send records attribution touches", camp_touches >= 1)
 
     # ── 25 admin ──
     role = admin.create_role(db, "AE", ["crm.read", "sequences.*"])

@@ -37,6 +37,33 @@ def run_writes():
 
     admin = sa.create_engine(url)
     with admin.begin() as c:
+        # Re-assert the tenancy DDL on `organizations` before seeding, for the
+        # same reason test_tenancy_rls.py does: this suite shares one live
+        # Postgres with every other script-style test in the same CI
+        # `pytest tests/` process, and several of them (test_engine_e2e.py and
+        # others) call Base.metadata.drop_all() + create_all(). That DOES
+        # drop/recreate `organizations` -- it's an ORM-mapped table -- but
+        # knows nothing about tenant_id, its GUC-reading default, or the RLS
+        # policy, since those exist only via migrations d1a2b3c4e5f6 and
+        # g4d6e8f0a2b3 as raw SQL, never as ORM columns. Result: this file
+        # hard-failed with `column "tenant_id" does not exist` whenever it ran
+        # after test_engine_e2e.py, which alphabetical collection order
+        # guarantees ("e" < "t"). Reproduced against a fresh disposable
+        # Postgres, and confirmed pre-existing (the same failure occurs on the
+        # pre-integration baseline). Idempotent, and matches the migrations
+        # exactly so it can never mask a genuine migration defect.
+        c.execute(sa.text(
+            "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_id uuid"))
+        c.execute(sa.text(
+            "ALTER TABLE organizations ALTER COLUMN tenant_id SET DEFAULT COALESCE("
+            "nullif(current_setting('app.current_tenant', true), '')::uuid, "
+            "'00000000-0000-0000-0000-000000000001'::uuid)"))
+        c.execute(sa.text("ALTER TABLE organizations ENABLE ROW LEVEL SECURITY"))
+        c.execute(sa.text("ALTER TABLE organizations FORCE ROW LEVEL SECURITY"))
+        c.execute(sa.text("DROP POLICY IF EXISTS tenant_isolation ON organizations"))
+        c.execute(sa.text("""CREATE POLICY tenant_isolation ON organizations
+            USING ( coalesce(current_setting('app.current_tenant', true), '') = ''
+                    OR tenant_id::text = current_setting('app.current_tenant', true) )"""))
         for tid, nm in [(TA, "WA"), (TB, "WB")]:
             c.execute(sa.text("INSERT INTO tenants (id,name,slug) VALUES (:i,:n,:n) "
                               "ON CONFLICT (id) DO NOTHING"), {"i": tid, "n": nm})
@@ -114,6 +141,16 @@ def run_middleware():
     os.environ["AUTH_ENFORCED"] = "true"
     import importlib, tenant_middleware
     importlib.reload(tenant_middleware)
+    check("MW route matching respects path boundaries",
+          tenant_middleware._required_scope("/crmevil", "GET") is None)
+    check("MW CRM read requires crm.read",
+          tenant_middleware._required_scope("/organizations", "GET") == "crm.read")
+    check("MW CRM mutation requires crm.write",
+          tenant_middleware._required_scope("/organizations", "POST") == "crm.write")
+    check("MW sales mutations are sequence-manager only",
+          tenant_middleware._required_scope("/sales/replies", "POST") == "sequences.manage")
+    check("MW developer surface is administrator only",
+          tenant_middleware._required_scope("/dev", "GET") == "admin.full")
     app2 = Starlette(routes=[Route("/whoami", whoami), Route("/t/ping", public),
                              Route("/health", public)])
     app2.add_middleware(tenant_middleware.TenantMiddleware)

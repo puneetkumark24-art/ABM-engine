@@ -537,10 +537,15 @@ class AudienceReq(BaseModel):
     builtin: Optional[str] = None           # all|tier1|tier2|tier3|indian|c_suite|bank:<org_id>
 
 
-@mkt.post("/mkt/audiences", status_code=201)
-def create_audience(req: AudienceReq, db: Session = Depends(get_db)):
-    from abm_platform.services import marketing, segments as segsvc
-    a = marketing.create_audience(db, req.name)
+def _audience_person_ids(req: AudienceReq, db: Session) -> list[str]:
+    """Resolve an audience spec to a de-duplicated person-id list.
+
+    Extracted so /preview can answer "who would this reach, and how many of
+    them are actually sendable" WITHOUT creating an audience row. The preview
+    button used to call create_audience, which left a throwaway audience (and
+    its members) in the database every time an operator clicked it.
+    """
+    from abm_platform.services import segments as segsvc
     pids = list(req.person_ids or [])
     if req.segment_id:
         pids += [p.id for p in segsvc.evaluate(db, req.segment_id)]
@@ -562,7 +567,26 @@ def create_audience(req: AudienceReq, db: Session = Depends(get_db)):
         elif b != "all":
             raise HTTPException(status_code=422, detail=f"unknown builtin '{b}'")
         pids += [p.id for p in q.all()]
-    n = marketing.add_members(db, a.id, list(dict.fromkeys(pids))) if pids else 0
+    return list(dict.fromkeys(pids))
+
+
+@mkt.post("/mkt/audiences/preview")
+def preview_audience(req: AudienceReq, db: Session = Depends(get_db)):
+    """Read-only "who would this reach". Creates nothing, commits nothing."""
+    pids = _audience_person_ids(req, db)
+    people = db.query(models.Person).filter(models.Person.id.in_(pids)).all() if pids else []
+    eligible = sum(1 for p in people if p.is_active and not p.do_not_contact
+                   and p.primary_email and (p.consent_status or "") != "denied")
+    return {"members": len(people), "eligible": eligible,
+            "held_for_human": sum(1 for p in people if p.seniority_level == "c_suite")}
+
+
+@mkt.post("/mkt/audiences", status_code=201)
+def create_audience(req: AudienceReq, db: Session = Depends(get_db)):
+    from abm_platform.services import marketing
+    a = marketing.create_audience(db, req.name)
+    pids = _audience_person_ids(req, db)
+    n = marketing.add_members(db, a.id, pids) if pids else 0
     return {"id": a.id, "name": a.name, "members": n}
 
 

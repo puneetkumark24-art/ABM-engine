@@ -6,7 +6,7 @@ Run (prod, Postgres): DATABASE_URL=postgresql+psycopg2://... uvicorn main:app --
 """
 from fastapi import FastAPI
 from database import Base, engine
-from routers import organizations, persons, signals, opportunities, sequences, platform_status, platform_modules, engine_e2e, tracking_decision, crm_marketing_ext, crm2, journeys, abm_intel, sales_engagement, workflow_durable, cohorts, developer_platform, security_compliance, webapp, unified, auth_login, parity, final_wave, os_shell, master_data, bd_parity, inbound
+from routers import organizations, persons, signals, opportunities, sequences, platform_status, platform_modules, engine_e2e, tracking_decision, crm_marketing_ext, crm2, journeys, abm_intel, sales_engagement, workflow_durable, cohorts, developer_platform, security_compliance, webapp, unified, auth_login, parity, final_wave, os_shell, master_data, bd_parity, inbound, signal_review, pipeline_ops
 
 app = FastAPI(
     title="DRIP — Decimal Relationship Intelligence Platform",
@@ -45,7 +45,12 @@ audit_trail.register()
 
 @app.on_event("startup")
 def on_startup():
-    Base.metadata.create_all(bind=engine)
+    from config import settings
+    settings.validate_runtime()
+    # Production schema is owned by Alembic; create_all can silently bypass
+    # reviewed migrations and constraints. It remains convenient for local dev.
+    if settings.env.lower() not in {"prod", "production"}:
+        Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")
@@ -83,6 +88,13 @@ app.include_router(bd_parity.mkt)
 # Inbound: bounce + reply capture by polling, so bounce/reply events need no
 # public HTTPS endpoint. Email replies reach ACC-001 here for the first time.
 app.include_router(inbound.router)
+
+# Signal Engine v2 (shadow mode): isolated 360-degree account signal capture,
+# reviewed here but only ever promoted into the real `signals` table by an
+# explicit human-run export (scripts/signal_v2_export_cli.py), never
+# automatically. See abm_platform/services/signal_v2_bridge.py.
+app.include_router(signal_review.router)
+app.include_router(pipeline_ops.router)
 
 # Parity Mission: wire the LLM behind the existing AI seams when a key exists.
 # Guardrails (PII anonymization, QC, c-suite human gate) are unchanged — the

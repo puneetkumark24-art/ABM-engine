@@ -23,6 +23,15 @@ _FIELD_MAP = {
     "role": lambda p, o: p.current_title if p else None,
     "city": lambda p, o: p.city if p else None,
     "sender": lambda p, o: "Puneet Kumar",
+    # Aliases. The Campaigns screen told operators for months that the tags
+    # were {first_name} and {bank} -- neither of which existed here, so anyone
+    # following the on-screen instruction got a silently EMPTY substitution
+    # (render_merge returns "" for an unknown tag rather than leaving it
+    # literal). The label is fixed, but campaign bodies already written against
+    # the old wording keep working: these two are the same values as
+    # {name} and {institution}.
+    "first_name": lambda p, o: (p.full_name or "").split(" ")[0] if p else None,
+    "bank": lambda p, o: o.canonical_name if o else None,
 }
 
 

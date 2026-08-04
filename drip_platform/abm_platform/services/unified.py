@@ -105,6 +105,19 @@ def global_search(db: Session, q: str, limit_per_type: int = 5) -> dict:
 
 
 # ── executive dashboard ──────────────────────────────────────
+def _person_label(db: Session, person_id: str) -> str | None:
+    p = db.get(models.Person, person_id) if person_id else None
+    return getattr(p, "full_name", None)
+
+
+def _person_org(db: Session, person_id: str) -> str | None:
+    p = db.get(models.Person, person_id) if person_id else None
+    if p is None or not p.current_org_id:
+        return None
+    org = db.get(models.Organization, p.current_org_id)
+    return getattr(org, "canonical_name", None)
+
+
 def executive_dashboard(db: Session, now: datetime | None = None) -> dict:
     now = now or datetime.utcnow()
     week_ago = now - timedelta(days=7)
@@ -141,13 +154,71 @@ def executive_dashboard(db: Session, now: datetime | None = None) -> dict:
         "weighted_minor": int(weighted),
         "weighted_sar": f"SAR {weighted/100:,.0f}",
         "signals_this_week": signals_week,
-        "hot_leads": [{"person_id": h.person_id, "score": h.engagement_score} for h in hot],
+        # Name and account, not just the id. The dashboard was rendering
+        # `person_id.slice(0,8)` -- a truncated UUID -- because that was the
+        # only identifying field this payload carried, so "Hot leads" read as a
+        # list of meaningless hex strings. sales_engagement.hot_leads() already
+        # resolves the name for the /sales/hot-leads endpoint; this one just
+        # never did.
+        "hot_leads": [{"person_id": h.person_id,
+                       "name": _person_label(db, h.person_id),
+                       "org": _person_org(db, h.person_id),
+                       "score": h.engagement_score} for h in hot],
         "active_journey_enrollments": active_journeys,
         "email": {"sends": email["totals"]["sent"], "open_rate": email["rates"]["open_rate"],
                   "click_rate": email["rates"]["click_rate"]},
         "tasks_open": db.query(__import__("models_p12").CrmTask)
                         .filter(__import__("models_p12").CrmTask.status != "done").count(),
         "suppressions": db.query(mx.Suppression).count(),
+    }
+
+
+def growth_operations(db: Session, now: datetime | None = None) -> dict:
+    """One operational truth across ABM, marketing automation and CRM."""
+    now = now or datetime.utcnow()
+    week_ago = now - timedelta(days=7)
+    PersonEngagement = p10.PersonEngagement
+    CrmTask = __import__("models_p12").CrmTask
+    return {
+        "mode": "shadow_dry_run",
+        "flow": {
+            "accounts_monitored": db.query(models.Organization).count(),
+            "signals_7d": db.query(models.Signal).filter(models.Signal.created_at >= week_ago).count(),
+            "contactable_people": db.query(models.Person).filter(
+                models.Person.is_active == True, models.Person.do_not_contact == False,  # noqa: E712
+                models.Person.primary_email.isnot(None),
+                or_(models.Person.consent_status.is_(None),
+                    ~models.Person.consent_status.in_(["denied", "withdrawn"])),
+                ~models.Person.primary_email.in_(db.query(mx.Suppression.email))).count(),
+            "active_nurture": (db.query(m3.JourneyEnrollment).filter_by(status="active").count()
+                               + db.query(models.SequenceEnrollment).filter_by(status="ACTIVE").count()),
+            "engaged_people": db.query(PersonEngagement).filter(
+                PersonEngagement.engagement_score > 0).count(),
+            "open_deals": db.query(models.Opportunity).filter(
+                models.Opportunity.closed_at.is_(None)).count(),
+        },
+        "queues": {
+            "draft_approvals": db.query(models.Draft).filter_by(status="pending").count(),
+            "campaign_approvals": db.query(models.Draft).filter(
+                models.Draft.status == "pending", models.Draft.source.like("campaign:%")).count(),
+            "tasks_open": db.query(CrmTask).filter(CrmTask.status != "done").count(),
+            "failed_delivery": db.query(mx.SendRequest).filter_by(status="failed").count(),
+        },
+        "marketing": {
+            "campaigns": db.query(mx.EmailCampaign).count(),
+            "campaigns_active": db.query(mx.EmailCampaign).filter(
+                mx.EmailCampaign.status.in_(["scheduled", "sending", "awaiting_approval"])).count(),
+            "journeys": db.query(m3.JourneyDef).count(),
+            "journey_enrollments_active": db.query(m3.JourneyEnrollment).filter_by(status="active").count(),
+            "messages": db.query(mx.EmailMessage).count(),
+            "suppressed": db.query(mx.Suppression).count(),
+        },
+        "controls": {
+            "real_delivery_enabled": False,
+            "c_suite_human_gate": True,
+            "consent_gate": True,
+            "account_rescore_on_touch": True,
+        },
     }
 
 

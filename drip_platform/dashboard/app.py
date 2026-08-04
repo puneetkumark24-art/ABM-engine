@@ -1,6 +1,18 @@
 """
 DRIP Dashboard — Phase 5.
 
+** LEGACY / IN TRANSITION — this is NOT the main DRIP dashboard. **
+This is a standalone Flask app (port 5050) with its own bank/contact CRUD
+screens. It is NOT wired into main.py's FastAPI app in any way, has no
+visibility into signals, AI decisions, drafts, or sequences, and none of the
+pipeline work built into routers/os_shell.py reaches this file. It still
+works for the contact CRUD it was built for, but the real, current dashboard
+-- Account 360, Signal Review, Approvals, Sequences/Enrollments, AI Decisions
+-- is the FastAPI app at http://127.0.0.1:8000/, started by
+"Start DRIP Platform.bat", not this file. "Start Dashboard.bat" now points
+there too, for exactly this reason (it used to launch only this file, which
+was the source of real confusion: this file has none of the pipeline UI).
+
 Reuses the visual design of brip_dashboard (found in Phase 1 discovery)
 rewired to the actual drip schema/database instead of the never-built
 "brip" Postgres database it originally pointed at. Same SQLAlchemy session

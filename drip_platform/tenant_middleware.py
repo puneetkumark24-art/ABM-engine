@@ -32,6 +32,10 @@ PUBLIC_EXACT = ("/", "/app", "/legacy", "/legacy-portal")
 # Scopes use wildcards (crm.* grants crm.read). Extend as routers are added.
 SCOPE_POLICY = [
     ("/crm", "crm.read"),
+    ("/organizations", "crm.read"),
+    ("/persons", "crm.read"),
+    ("/signals", "crm.read"),
+    ("/opportunities", "crm.read"),
     ("/px/rules", "rules.manage"),
     ("/px/ai", "ai.generate"),
     ("/px/linkedin", "linkedin.manage"),
@@ -39,8 +43,26 @@ SCOPE_POLICY = [
     ("/engine/merge", "crm.merge"),
     ("/decide", "ai.decide"),
     ("/sequences", "sequences.manage"),
+    ("/sales", "sequences.manage"),
+    ("/signal-review", "sequences.manage"),
+    # Drafts/decisions are the human-approval surface for what the sequence
+    # engine produces -- same authorization domain as /sequences itself, not
+    # left as "any authenticated user, no scope" by omission.
+    ("/drafts", "sequences.manage"),
+    ("/decisions", "sequences.manage"),
     ("/mkt", "marketing.manage"),
     ("/admin", "admin.full"),
+    ("/dev", "admin.full"),
+    ("/compliance", "admin.full"),
+    ("/workflow", "admin.full"),
+]
+
+WRITE_SCOPE_POLICY = [
+    ("/crm", "crm.write"),
+    ("/organizations", "crm.write"),
+    ("/persons", "crm.write"),
+    ("/signals", "crm.write"),
+    ("/opportunities", "crm.write"),
 ]
 
 
@@ -50,11 +72,15 @@ def _is_public(path: str) -> bool:
     return any(path == p or path.startswith(p) for p in PUBLIC_PREFIXES)
 
 
-def _required_scope(path: str) -> str | None:
+def _required_scope(path: str, method: str = "GET") -> str | None:
     match = None
-    for prefix, scope in SCOPE_POLICY:
-        if path.startswith(prefix) and (match is None or len(prefix) > len(match[0])):
+    policy = WRITE_SCOPE_POLICY if method.upper() in {"POST", "PUT", "PATCH", "DELETE"} else SCOPE_POLICY
+    for prefix, scope in policy:
+        if ((path == prefix or path.startswith(prefix + "/"))
+                and (match is None or len(prefix) > len(match[0]))):
             match = (prefix, scope)
+    if match is None and policy is WRITE_SCOPE_POLICY:
+        return _required_scope(path, "GET")
     return match[1] if match else None
 
 
@@ -78,7 +104,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if _enforced() and not _is_public(path):
             if principal is None:
                 return JSONResponse({"detail": "authentication required"}, status_code=401)
-            scope = _required_scope(path)
+            scope = _required_scope(path, request.method)
             if scope and not principal.has_scope(scope):
                 return JSONResponse({"detail": f"missing scope: {scope}"}, status_code=403)
 

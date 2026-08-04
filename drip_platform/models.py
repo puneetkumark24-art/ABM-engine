@@ -183,7 +183,7 @@ class Person(Base):
     is_influencer = Column(Boolean, default=False)
     is_connector = Column(Boolean, default=False)
 
-    primary_email = Column(String)
+    primary_email = Column(String, index=True)
     secondary_email = Column(String)
     email_confidence = Column(String, default="Unknown")
     phone = Column(String)

@@ -5,10 +5,11 @@ MKT-004: sends route through the delivery engine (dry-run by default) and the
 KSA send-window is the delivery layer's concern (sequences.send_window)."""
 from __future__ import annotations
 from datetime import datetime
+import uuid
 from sqlalchemy.orm import Session
 import models
 import models_ext as mx
-from . import delivery
+from . import delivery, marketing_ext, attribution, engagement
 from abm_platform.events import Event, publish
 
 _OPS = {
@@ -107,8 +108,9 @@ def send_campaign(db: Session, campaign_id: str, transport: str = "dry_run") -> 
     camp.status = "sending"
     members = resolve_members(db, camp.audience_id)
     variants = (camp.ab_config or {}).get("variants") or [{"name": "A", "subject": camp.subject}]
-    sent = blocked = 0
+    sent = blocked = existing = held_for_human = 0
     reasons: dict[str, int] = {}
+    touched_orgs: set[str] = set()
     for i, person in enumerate(members):
         ok, reason = is_sendable(db, person)
         if not ok:
@@ -116,18 +118,62 @@ def send_campaign(db: Session, campaign_id: str, transport: str = "dry_run") -> 
             reasons[reason] = reasons.get(reason, 0) + 1
             continue
         var = variants[i % len(variants)]
-        msg = mx.EmailMessage(campaign_id=camp.id, person_id=person.id,
+        subject = marketing_ext.render_merge(db, var.get("subject") or camp.subject, person)
+        body = marketing_ext.render_merge(db, camp.body, person)
+        if person.seniority_level == "c_suite":
+            pending = (db.query(models.Draft).filter(
+                models.Draft.person_id == person.id,
+                models.Draft.source == f"campaign:{camp.id}",
+                models.Draft.status.in_(["pending", "approved", "sent"])).first())
+            if pending:
+                existing += 1
+            else:
+                db.add(models.Draft(org_id=person.current_org_id, person_id=person.id,
+                                    channel="email", subject=subject, body=body,
+                                    status="pending", source=f"campaign:{camp.id}",
+                                    sequence_step=0))
+                # flush() is load-bearing here, not tidiness. SessionLocal is
+                # built with autoflush=False (database.py), so without this the
+                # Draft is still only pending in the identity map when the
+                # `pending_approvals` count runs below -- the count comes back
+                # 0 and the campaign is marked "sent" while an executive draft
+                # is still awaiting human review. That is the exact opposite of
+                # the guarantee this branch exists to provide. Caught by
+                # driving a real campaign end-to-end rather than trusting the
+                # service call in isolation.
+                db.flush()
+                held_for_human += 1
+            continue
+        # Stable recipient id makes scheduler/API retries exactly-once.
+        msg_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"drip:campaign:{camp.id}:{person.id}"))
+        msg = db.get(mx.EmailMessage, msg_id)
+        if msg is not None:
+            existing += 1
+            continue
+        msg = mx.EmailMessage(id=msg_id, campaign_id=camp.id, person_id=person.id,
                               to_email=person.primary_email, variant=var["name"])
         db.add(msg); db.flush()
         delivery.enqueue(db, message_id=msg.id, to_email=person.primary_email,
-                         subject=var.get("subject") or camp.subject, body=camp.body,
+                         subject=subject, body=body,
                          transport=transport)
         msg.status = "sent"; msg.sent_at = datetime.utcnow()
+        attribution.record_touch(db, org_id=person.current_org_id, person_id=person.id,
+                                 channel="email", campaign_id=camp.id)
+        if person.current_org_id:
+            touched_orgs.add(person.current_org_id)
         sent += 1
-    camp.status = "sent"
+    pending_approvals = db.query(models.Draft).filter(
+        models.Draft.source == f"campaign:{camp.id}",
+        models.Draft.status.in_(["pending", "approved"])).count()
+    camp.status = "awaiting_approval" if pending_approvals else "sent"
     db.commit()
+    for org_id in touched_orgs:
+        engagement.rollup_org(db, org_id)
     publish(Event("email.campaign.sent", key=camp.id, payload={"sent": sent, "blocked": blocked}))
-    return {"sent": sent, "blocked": blocked, "blocked_reasons": reasons, "variants_used": len(variants)}
+    return {"sent": sent, "held_for_human": held_for_human,
+            "existing_skipped": existing, "blocked": blocked,
+            "blocked_reasons": reasons, "variants_used": len(variants),
+            "accounts_rescored": len(touched_orgs), "status": camp.status}
 
 
 def campaign_report(db: Session, campaign_id: str) -> dict:

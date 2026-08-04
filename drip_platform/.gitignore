@@ -3,3 +3,14 @@
 *.db-journal
 __pycache__/
 *.pyc
+
+# Added during the production-readiness pass (Aug 2, 2026) -- these hold real
+# data or are throwaway scratch files, none belong in git history:
+*.dump                      # pg_dump backups (e.g. drip_backup_after_signal_v2.dump) -- real bank/contact data
+.pytest_cache/
+_signal_v2_backups/         # pre-edit file snapshots taken during the signal engine integration -- local safety net, not project history
+_tmp_orig_bridge_test/      # leftover scratch copy of the original vendor bridge test, safe to ignore (could not be deleted from the sandbox)
+_sigtest.db*
+_probe_sync.txt
+logs/                       # autonomous pipeline run logs -- local operational output, not source
+work/

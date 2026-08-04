@@ -70,6 +70,7 @@ def ingest_webhook(db: Session, events: list[dict]) -> dict:
     bounce/complaint/unsub => suppress + flip message status."""
     from . import marketing  # late import to avoid cycle
     accepted = duplicates = 0
+    touched_orgs: set[str] = set()
     seen_batch: set[str] = set()   # dedup within this batch (rows not yet committed)
     for ev in events:
         pid = ev.get("id") or f"{ev.get('message_id')}:{ev.get('type')}:{ev.get('ts')}"
@@ -85,6 +86,9 @@ def ingest_webhook(db: Session, events: list[dict]) -> dict:
 
         msg = db.query(mx.EmailMessage).filter_by(id=ev.get("message_id")).first()
         if msg:
+            person = db.get(__import__("models").Person, msg.person_id)
+            if person and person.current_org_id:
+                touched_orgs.add(person.current_org_id)
             if etype in ("open",):
                 msg.status = "opened"
             elif etype in ("click",):
@@ -93,17 +97,29 @@ def ingest_webhook(db: Session, events: list[dict]) -> dict:
                 msg.status = "bounced"
                 if msg.to_email:
                     marketing.suppress(db, msg.to_email, reason="bounce")
+                if person and etype == "hard_bounce":
+                    person.do_not_contact = True
             elif etype in ("complaint", "spam"):
                 msg.status = "complained"
                 if msg.to_email:
                     marketing.suppress(db, msg.to_email, reason="complaint")
-            elif etype in ("unsub",):
+                if person:
+                    person.do_not_contact = True
+                    person.consent_status = "denied"
+            elif etype in ("unsub", "unsubscribe"):
                 msg.status = "unsub"
                 if msg.to_email:
                     marketing.suppress(db, msg.to_email, reason="unsub")
+                if person:
+                    person.do_not_contact = True
+                    person.consent_status = "denied"
         publish(Event(f"email.event.{etype}", key=ev.get("message_id"), payload=ev))
     db.commit()
-    return {"accepted": accepted, "duplicates": duplicates}
+    from . import engagement
+    for org_id in touched_orgs:
+        engagement.rollup_org(db, org_id)
+    return {"accepted": accepted, "duplicates": duplicates,
+            "accounts_rescored": len(touched_orgs)}
 
 
 def message_events(db: Session, message_id: str) -> list[dict]:

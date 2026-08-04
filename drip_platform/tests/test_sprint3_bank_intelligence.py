@@ -175,3 +175,10 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+def test_sprint3_bank_intelligence():
+    try:
+        run()
+    except SystemExit as e:
+        assert not e.code, f"test_sprint3_bank_intelligence reported failing checks (exit code {e.code})"

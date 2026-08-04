@@ -157,3 +157,10 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+def test_sprint4_tier_c():
+    try:
+        run()
+    except SystemExit as e:
+        assert not e.code, f"test_sprint4_tier_c reported failing checks (exit code {e.code})"

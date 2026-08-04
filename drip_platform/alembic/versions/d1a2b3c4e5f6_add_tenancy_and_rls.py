@@ -93,11 +93,28 @@ def downgrade():
     import sqlalchemy as sa
     rows = bind.execute(sa.text(
         "SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()
+    # Declarative-partitioned tables (metric_events, delivery_events,
+    # web_events -- see abm_platform/services/partitioning.py) each have
+    # several physical partition children (e.g. metric_events_default,
+    # metric_events_2026_07). Postgres refuses `DROP COLUMN` run directly
+    # against a partition child -- "cannot drop inherited column" -- even
+    # with IF EXISTS, because the column is only real on the partitioned
+    # parent; dropping it there cascades to every partition automatically.
+    # Discovered by actually running an upgrade/downgrade/upgrade round trip
+    # against a real Postgres: `pg_tables` has no defined row order, so this
+    # broke intermittently depending on which table alembic happened to
+    # process the child before its parent.
+    partition_children = {r[0] for r in bind.execute(sa.text("""
+        SELECT c.relname FROM pg_inherits i
+        JOIN pg_class c ON c.oid = i.inhrelid AND c.relkind = 'r'
+        JOIN pg_class p ON p.oid = i.inhparent AND p.relkind IN ('p', 'r')
+    """)).fetchall()}
     for (table,) in rows:
         if table in EXCLUDE:
             continue
         op.execute(f'DROP POLICY IF EXISTS tenant_isolation ON "{table}"')
         op.execute(f'ALTER TABLE "{table}" NO FORCE ROW LEVEL SECURITY')
         op.execute(f'ALTER TABLE "{table}" DISABLE ROW LEVEL SECURITY')
-        op.execute(f'ALTER TABLE "{table}" DROP COLUMN IF EXISTS tenant_id')
+        if table not in partition_children:
+            op.execute(f'ALTER TABLE "{table}" DROP COLUMN IF EXISTS tenant_id')
     op.execute("DROP TABLE IF EXISTS tenants")

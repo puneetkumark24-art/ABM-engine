@@ -1,0 +1,23 @@
+id,account_id,channel,url,label
+rajhi-careers,al_rajhi,careers,https://careers.alrajhibank.com.sa/en/home/,Al Rajhi Bank careers
+rajhi-jobs,al_rajhi,careers,https://careers.alrajhibank.com.sa/en/saudi-arabia/jobs/?page=1,Al Rajhi Bank current jobs
+rajhi-vendors,al_rajhi,procurement,https://www.alrajhibank.com.sa/en/About-alrajhi-bank/Vendors,Al Rajhi Bank vendors
+riyad-careers,riyad,careers,https://careers.riyadbank.com/ar/,Riyad Bank careers
+riyad-jobs,riyad,careers,https://careers.riyadbank.com/en/job-search-advanced/,Riyad Bank jobs
+riyad-suppliers,riyad,procurement,https://www.riyadbank.com/en/info-tools/suppliers-portal,Riyad Bank suppliers
+alinma-news,alinma,official_site,https://www.alinma.com/en/About-the-Bank/The-Bank/News,Alinma Bank news
+alinma-careers,alinma,careers,https://career.alinma.com/auth/jobseeker/signup,Alinma Bank careers
+alinma-vendors,alinma,procurement,https://www.alinma.com/en/Quick-Links/Vendor-Relations,Alinma Bank vendor relations
+stc-careers,stc_bank,careers,https://stcbank.com.sa/en/web/guest/job-application,STC Bank careers
+snb-newsroom,snb,official_site,https://www.alahli.com/en/pages/about-us/newsroom,Saudi National Bank newsroom
+sab-newsroom,sab,official_site,https://www.sab.com/en/about-us/newsroom/,Saudi Awwal Bank newsroom
+sab-careers,sab,careers,https://www.sab.com/en/about-us/careers/,Saudi Awwal Bank careers
+anb-news,anb,official_site,https://anb.com.sa/web/anb/news,Arab National Bank news
+albilad-news,albilad,official_site,https://www.bankalbilad.com.sa/en/about/news/Pages/default.aspx,Bank Albilad news
+albilad-careers,albilad,careers,https://www.bankalbilad.com.sa/en/about/pages/e-careers.aspx,Bank Albilad careers
+albilad-vendors,albilad,procurement,https://www.bankalbilad.com.sa/en/vendor-relations/pages/default.aspx,Bank Albilad vendor services
+bsf-news,bsf,official_site,https://bsf.sa/english/news,Banque Saudi Fransi news
+bsf-careers,bsf,careers,https://www.bsfcareers.sa/,Banque Saudi Fransi careers
+snb-careers,snb,careers,https://www.alahli.com/en/pages/about-us/careers,Saudi National Bank careers
+anb-careers,anb,careers,https://careers.anb.com.sa/jobs,Arab National Bank careers
+baj-careers,baj,careers,https://career.aljazirabank.com.sa/,Bank AlJazira careers

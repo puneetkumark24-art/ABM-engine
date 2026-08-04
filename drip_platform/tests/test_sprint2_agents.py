@@ -144,3 +144,10 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+def test_sprint2_agents():
+    try:
+        run()
+    except SystemExit as e:
+        assert not e.code, f"test_sprint2_agents reported failing checks (exit code {e.code})"

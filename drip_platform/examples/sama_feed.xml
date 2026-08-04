@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>SAMA News</title>
+  <item>
+    <guid>sama-001</guid>
+    <title>SAMA issues open banking compliance circular affecting Al Rajhi Bank</title>
+    <link>https://www.sama.gov.sa/news/open-banking-001?utm_source=test</link>
+    <description>The circular sets requirements for digital identity and customer onboarding.</description>
+    <pubDate>Fri, 01 Aug 2026 08:00:00 GMT</pubDate>
+  </item>
+  <item>
+    <guid>sama-002</guid>
+    <title>General insurance market statistical update</title>
+    <link>https://www.sama.gov.sa/news/insurance-002</link>
+    <description>An update unrelated to target banking technology initiatives.</description>
+    <pubDate>Fri, 01 Aug 2026 07:00:00 GMT</pubDate>
+  </item>
+</channel></rss>
+

@@ -24,6 +24,11 @@ def executive(db: Session = Depends(get_db)):
     return unified.executive_dashboard(db)
 
 
+@router.get("/dashboard/growth-operations")
+def growth_operations(db: Session = Depends(get_db)):
+    return unified.growth_operations(db)
+
+
 @router.get("/analytics/email")
 def email_analytics(campaign_id: Optional[str] = None, since_days: int = 90,
                     db: Session = Depends(get_db)):

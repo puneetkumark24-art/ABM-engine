@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Signal Review{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Signal Review</h1><p>Evidence review only — approval never sends outreach.</p></div>
+
+<div class="card"><h2>Open reviews ({{ reviews|length }})</h2>
+{% for r in reviews %}
+<div class="signal-item" id="review-{{ r.id }}">
+  <div class="signal-source">{{ r.reason_code }} · {{ r.published_at or r.created_at }}</div>
+  <div class="signal-title">{{ r.title }}</div>
+  <div class="signal-summary">{{ r.body or '' }}</div>
+  {% if r.canonical_url %}<a href="{{ r.canonical_url }}" target="_blank" rel="noopener">Read evidence →</a>{% endif %}
+  <div class="btn-group" style="margin-top:10px">
+    <select id="account-{{ r.id }}"><option value="">Assign account…</option>{% for a in accounts %}<option value="{{ a.id }}">{{ a.canonical_name }}</option>{% endfor %}</select>
+    <button class="btn btn-approve btn-sm" onclick="resolveReview('{{ r.id }}','approve')">Approve signal</button>
+    <button class="btn btn-reject btn-sm" onclick="resolveReview('{{ r.id }}','reject')">Reject</button>
+  </div>
+</div>
+{% else %}<div class="empty"><p>No open signal reviews.</p></div>{% endfor %}</div>
+
+<div class="card" style="margin-top:16px"><h2>Active signals ({{ signals|length }})</h2>
+{% for s in signals %}<div class="signal-item"><div class="signal-source">{{ s.canonical_name }} · {{ s.signal_type }} · confidence {{ '%.0f'|format(s.confidence*100) }}%</div><div class="signal-title">{{ s.title }}</div><div class="signal-summary">Scoring eligible: {{ 'yes' if s.scoring_eligible else 'no' }} · Expires {{ s.expires_at }}</div></div>{% endfor %}</div>
+
+<div class="card" style="margin-top:16px"><h2>Market intelligence ({{ market|length }})</h2>
+{% for m in market %}<div class="signal-item"><div class="signal-time">{{ m.published_at }}</div><div class="signal-title">{{ m.title }}</div>{% if m.canonical_url %}<a href="{{ m.canonical_url }}" target="_blank" rel="noopener">Evidence →</a>{% endif %}</div>{% endfor %}</div>
+{% endblock %}
+{% block scripts %}<script>
+async function resolveReview(id,resolution){
+ const account=document.getElementById(`account-${id}`).value;
+ if(resolution==='approve'&&!account){alert('Select an account first.');return;}
+ const response=await fetch(`/api/signal-review/${id}/resolve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resolution,account})});
+ const data=await response.json(); if(!data.ok){alert(data.error||'Review failed');return;} location.reload();
+}
+</script>{% endblock %}

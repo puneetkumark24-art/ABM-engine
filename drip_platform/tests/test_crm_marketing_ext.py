@@ -21,7 +21,7 @@ import models_p11  # noqa: E402,F401
 import models_p12 as p12  # noqa: E402
 from abm_platform.services import (  # noqa: E402
     crm_ext, marketing, marketing_ext, landing, landing_render, delivery,
-    delivery_ext, assets as assets_svc, engagement,
+    delivery_ext, assets as assets_svc, engagement, orchestrator,
 )
 
 _results = []
@@ -135,6 +135,39 @@ def run():
                                       ab_config={"variants": [{"name": "A", "subject": "sa"},
                                                               {"name": "B", "subject": "sb"}]})
     marketing.send_campaign(db, campB.id)
+    repeat = marketing.send_campaign(db, campB.id)
+    check("MKT repeated campaign send is idempotent",
+          repeat["sent"] == 0 and repeat["existing_skipped"] == len(people))
+    executive = models.Person(full_name="C Suite Reviewer", primary_email="exec@example.invalid",
+                              current_org_id=org.id, consent_status="opted_in",
+                              seniority_level="c_suite")
+    db.add(executive); db.commit()
+    aud_exec = marketing.create_audience(db, "executive hold list")
+    marketing.add_members(db, aud_exec.id, [executive.id])
+    camp_exec = marketing.create_campaign(db, "executive gated campaign", aud_exec.id,
+                                          "Hello {name}", "For {institution}")
+    held_result = marketing.send_campaign(db, camp_exec.id)
+    check("MKT c-suite campaign recipient enters human approval",
+          held_result["held_for_human"] == 1 and held_result["sent"] == 0)
+    # The status gate, asserted explicitly. SessionLocal runs with
+    # autoflush=False, so the just-added approval draft was invisible to
+    # send_campaign's own pending-approvals count and the campaign was being
+    # marked "sent" while an executive still awaited review -- the exact
+    # guarantee this branch exists to provide, silently inverted. Found by
+    # driving a real campaign end to end; the fix is a flush() before the
+    # count. Assert on the persisted row, not just the return value.
+    db.refresh(camp_exec)
+    check("MKT campaign waits on the executive, not marked sent",
+          held_result["status"] == "awaiting_approval"
+          and camp_exec.status == "awaiting_approval")
+    held_draft = db.query(models.Draft).filter_by(person_id=executive.id, status="pending").first()
+    held_draft.status = "approved"; held_draft.reviewed_at = datetime.utcnow(); db.commit()
+    release = orchestrator.run_tick(db, respect_send_window=False)
+    check("MKT approved c-suite campaign dispatches through shared engine",
+          release["approved_dispatched"] == 1 and held_draft.status == "sent")
+    db.refresh(camp_exec)
+    check("MKT campaign completes once its last executive draft is released",
+          camp_exec.status == "sent")
     # simulate: B opens 60%, A opens 10%
     msgs = db.query(mx.EmailMessage).filter_by(campaign_id=campB.id).all()
     evs = []
@@ -143,6 +176,8 @@ def run():
         if (i % 10) < rate * 10:
             evs.append({"id": f"ab-{m.id}", "message_id": m.id, "type": "open", "ts": i})
     delivery.ingest_webhook(db, evs)
+    check("MKT engagement events immediately update account intelligence",
+          db.get(models.AccountIntelligence, org.id) is not None)
     win = marketing_ext.ab_winner(db, campB.id, metric="open")
     check("MKT AB winner decided with significance", win["decided"] and win["winner"] == "B"
           and win["z"] >= 1.96)

@@ -24,6 +24,8 @@ _OS = r"""<!DOCTYPE html>
 font-family:Inter,system-ui,sans-serif}
 *{box-sizing:border-box;margin:0}
 body{background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.skip{position:fixed;inset-inline-start:10px;top:-50px;z-index:100;background:var(--gold);color:#171208;padding:8px 12px;border-radius:8px}.skip:focus{top:10px}
 /* ── sidebar ── */
 #side{width:218px;min-width:218px;background:var(--panel);border-inline-end:1px solid var(--line);
 display:flex;flex-direction:column;overflow-y:auto}
@@ -48,6 +50,7 @@ border-bottom:1px solid var(--line);font-size:13px}
 #ctxbar b{color:var(--gold)}
 #ctxbar button{background:none;border:none;color:var(--dim);cursor:pointer}
 #screen{flex:1;overflow-y:auto;padding:22px}
+.screen-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px}.screen-head .sub{margin-bottom:0;max-width:780px}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 h2{font-size:17px;margin-bottom:4px} .sub{color:var(--dim);font-size:13px;margin-bottom:16px}
 .grid{display:grid;gap:14px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
@@ -73,6 +76,12 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .bar i{display:block;height:100%;background:var(--green)}
 .muted{color:var(--dim);font-size:12.5px}
 .planned{border:1px dashed var(--line);border-radius:12px;padding:22px;color:var(--dim);font-size:13.5px}
+.state{border:1px dashed var(--line);border-radius:10px;padding:18px;color:var(--dim);text-align:center}.state.bad{border-color:#633;color:#e89a9a}
+.status-strip{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.status-item{padding:6px 9px;border:1px solid var(--line);border-radius:8px;font-size:11.5px;color:var(--dim)}.status-item strong{color:var(--text)}
+.table-wrap{overflow:auto}.metric-note{margin-top:5px;line-height:1.35}.sr-source{display:grid;grid-template-columns:minmax(160px,1fr) auto auto;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+#toast{position:fixed;inset-inline-end:18px;bottom:18px;z-index:90;max-width:430px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 10px 30px #0008;display:none;font-size:13px}#toast.on{display:block}#toast.bad{border-color:var(--red)}#menubtn{display:none}
+@media(max-width:1050px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){#menubtn{display:block}#side{position:fixed;z-index:40;inset-block:0;inset-inline-start:0;transform:translateX(-105%);transition:transform .2s;box-shadow:12px 0 28px #0008}html[dir=rtl] #side{transform:translateX(105%)}#side.open{transform:translateX(0)}#screen{padding:14px}.g2,.g3,.g4{grid-template-columns:1fr}#top{padding:8px}.card{padding:12px}.kpi{font-size:21px}table{min-width:620px}.sr-source{grid-template-columns:1fr}}
 /* palette + notif overlays */
 .overlay{position:fixed;inset:0;background:rgba(6,10,8,.72);display:none;z-index:50;justify-content:center;align-items:flex-start;padding-top:9vh}
 .overlay.on{display:flex}
@@ -80,9 +89,11 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .hit{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13.5px}
 .hit:hover{background:var(--card)} .hit .k{color:var(--gold);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;margin-inline-end:8px}
 </style></head><body>
+<a class="skip" href="#screen">Skip to main content</a>
 <nav id="side"><div class="logo" onclick="nav('dashboard')" title="Home">◆ DRIP <span>OS</span> <span style="font-size:11px;color:var(--dim)">⌂ home</span></div><div id="navlinks"></div></nav>
 <div id="main">
  <div id="top">
+  <button id="menubtn" onclick="toggleMenu()" aria-label="Open navigation">&#9776;</button>
   <input id="gs" placeholder="Search everything…  (Ctrl+K)" onfocus="openPalette()" readonly>
   <button onclick="openNotifs()" title="Notifications">🔔<span id="notifdot"></span></button>
   <button onclick="toggleRTL()" title="العربية / English">ع/EN</button>
@@ -91,12 +102,13 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
  <div id="ctxbar">Working on <b id="ctxname"></b>
   <button onclick="nav('accounts/'+S.account.id)">open 360°</button>
   <button onclick="clearAccount()">✕ clear</button></div>
- <div id="screen"></div>
+ <main id="screen" tabindex="-1"></main>
 </div>
 <div class="overlay" id="pal"><div class="panel">
  <input id="palq" placeholder="Search accounts, contacts, deals, signals, quotes, journeys…" oninput="palSearch()">
  <div id="palres" style="margin-top:8px"></div></div></div>
 <div class="overlay" id="notifs"><div class="panel"><h3 style="color:var(--dim);font-size:12px;margin-bottom:8px">NOTIFICATIONS</h3><div id="notifbody">—</div></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 /* ═══════════ shared state ═══════════ */
 const S={token:localStorage.getItem('drip_token')||null,
@@ -116,16 +128,19 @@ async function api(method,path,body){
   if(r.status===401)document.getElementById('who').textContent='Sign in required';
   return {ok:r.ok,status:r.status,data:j};}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT=null;function toast(message,bad=false){const t=document.getElementById('toast');t.textContent=message;t.className='on'+(bad?' bad':'');clearTimeout(toastT);toastT=setTimeout(()=>t.className='',4200)}
+const state=(message,bad=false,action='')=>`<div class="state ${bad?'bad':''}">${esc(message)}${action?`<div style="margin-top:8px">${action}</div>`:''}</div>`;
+function toggleMenu(force){document.getElementById('side').classList.toggle('open',force)}
 function toggleRTL(){const r=document.documentElement.dir!=='rtl';
  document.documentElement.dir=r?'rtl':'ltr';document.documentElement.lang=r?'ar':'en';
  localStorage.setItem('drip_rtl',r?'1':'0');}
 if(localStorage.getItem('drip_rtl')==='1'){document.documentElement.dir='rtl';document.documentElement.lang='ar';}
 
 /* ═══════════ navigation ═══════════ */
-const NAV=[["Home",[["dashboard","Dashboard"]]],
-["Intelligence",[["accounts","Accounts"],["contacts","Contacts"],["vendors","Vendors"],["connectors","Connectors"],["initiatives","Initiatives"],["bd","BD Outreach"],["signals","Signals"],["committee","Buying Committee"]]],
+const NAV=[["Home",[["dashboard","Dashboard"],["growth","Growth Operations"]]],
+["Intelligence",[["accounts","Accounts"],["contacts","Contacts"],["vendors","Vendors"],["connectors","Connectors"],["initiatives","Initiatives"],["bd","BD Outreach"],["signals","Signals"],["signalreview","Signal Review (Shadow)"],["committee","Buying Committee"]]],
 ["Marketing",[["campaigns","Campaigns"],["journeys","Journeys"],["segments","Segments"],["email","Email Analytics"]]],
-["Sales",[["pipeline","Pipeline"],["meetings","Meetings"],["tasks","Tasks"],["sequences","Sequences"]]],
+["Sales",[["approvals","Approvals"],["pipeline","Pipeline"],["meetings","Meetings"],["tasks","Tasks"],["sequences","Sequences"]]],
 ["CRM",[["quotes","Quotes & Products"],["objects","Custom Objects"]]],
 ["Automation",[["workflow","Workflow"]]],
 ["AI Center",[["ai","Prompts & Calls"],["agents","Agents"]]],
@@ -136,6 +151,7 @@ function buildNav(){const el=document.getElementById('navlinks');
   items.map(([r,l])=>`<a href="#/${r}" data-r="${r}">${l}</a>`).join('')).join('');}
 function nav(r){location.hash='#/'+r;}
 function route(){const h=(location.hash||'#/dashboard').slice(2);const [name,id]=h.split('/');
+ toggleMenu(false);
  document.querySelectorAll('#side a').forEach(a=>a.classList.toggle('on',a.dataset.r===name));
  // context bar ONLY on an account/contact page — hidden everywhere else
  const onAccount=(name==='accounts'&&id)||name==='committee';
@@ -188,7 +204,7 @@ SCREENS.dashboard=async el=>{
  const a=await api('GET','/organizations');
  if(a.ok)document.getElementById('dacc').innerHTML='<table>'+ (a.data||[]).slice(0,8).map(o=>
   `<tr class="click" onclick='setAccount("${o.id}",${JSON.stringify(o.canonical_name)});nav("accounts/${o.id}")'><td>${esc(o.canonical_name)}</td></tr>`).join('')+'</table>';
- document.getElementById('dhot').innerHTML=d.hot_leads.length?d.hot_leads.map(h=>`<div>${h.person_id.slice(0,8)} — <span class="badge b-gold">${h.score}</span></div>`).join(''):'no engagement yet';};
+ document.getElementById('dhot').innerHTML=d.hot_leads.length?d.hot_leads.map(h=>`<div class="click" style="cursor:pointer" onclick='nav("contact/${h.person_id}")'><b style="color:var(--gold)">${esc(h.name||'(unnamed contact)')}</b>${h.org?' <span class="muted">— '+esc(h.org)+'</span>':''} <span class="badge b-gold">${h.score}</span></div>`).join(''):'no engagement yet';};
 
 let _orgsCache=[],_bdOv=null,_bdOvErr=null;
 SCREENS.accounts=async(el,id)=>{
@@ -285,7 +301,7 @@ async function account360(el,id){
  <div class="sub">Account 360 — everything about this bank in one place.</div>
  <div id="a360x"></div>
  <div class="tabs" id="a360t"></div><div id="a360b"></div>`;
- const tabs={Overview:t360Overview,Activity:t360Activity,Contacts:t360Contacts,Committee:t360Committee,Signals:t360Signals,Vendors:t360Vendors,Deals:t360Deals,Documents:t360Docs,AI:t360AI,Tasks:t360Tasks};
+ const tabs={Overview:t360Overview,Activity:t360Activity,Contacts:t360Contacts,Committee:t360Committee,Signals:t360Signals,Pipeline:t360Pipeline,Vendors:t360Vendors,Deals:t360Deals,Documents:t360Docs,AI:t360AI,Tasks:t360Tasks};
  const tb=document.getElementById('a360t');
  Object.keys(tabs).forEach((t,i)=>{const b=document.createElement('button');b.textContent=t;
   b.onclick=()=>{tb.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');tabs[t](document.getElementById('a360b'),id)};
@@ -533,6 +549,44 @@ window.sg360Load=async id=>{
   <button class="act" style="margin:0;padding:3px 8px;background:var(--blue)" onclick='sg360E(${JSON.stringify(s)},"${id}")'>edit</button></td></tr>`).join('')+'</table>':
   '<span class="muted">no signals — add one or run collectors</span>';};
 window.sg360T=async(sid,which,id)=>{await api('POST','/bd/signals/'+sid+'/toggle?which='+which);sg360Load(id);};
+
+/* ── Pipeline tab: what the AI engine has actually decided/drafted/enrolled for THIS account — scoped, read + approve, no separate run trigger (that lives on Sequences, since a tick is platform-wide, not per-account) ── */
+async function t360Pipeline(el,id){
+ el.innerHTML=`<div class="sub">What the AI decision engine, sequencer, and drafter have actually done for this account. A full engine cycle runs from <a style="color:var(--gold);cursor:pointer" onclick="nav('sequences')">Sequences → Run engine now</a> — it processes whatever's due platform-wide, not scoped to one account, so trigger it there and come back here to see the result.</div>
+ <div class="card"><h3 style="margin-top:0">AI decisions (most recent)</h3><div id="pl_dec">loading…</div></div>
+ <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Drafted outreach for this account</h3><div id="pl_draft">loading…</div></div>
+ <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Sequence enrollments for this account</h3><div id="pl_enr">loading…</div></div>`;
+ plLoad(id);}
+window.plLoad=async id=>{
+ const [dec,dr,en]=await Promise.all([
+  api('GET','/decisions?org_id='+id),
+  api('GET','/drafts?org_id='+id),
+  api('GET','/sequences/enrollments?org_id='+id+'&status=')]);
+ document.getElementById('pl_dec').innerHTML=(dec.ok&&dec.data.decisions.length)?dec.data.decisions.map(d=>
+  `<div style="margin:8px 0;padding-bottom:8px;border-bottom:1px solid var(--line)">
+   <span class="badge b-blue">${esc(d.action)}</span>${d.channel?' <span class="muted">via '+esc(d.channel)+'</span>':''}
+   <span class="muted"> · confidence ${(d.confidence??0).toFixed(2)} · </span>
+   <b>${esc(d.person_name||d.person_id.slice(0,8))}</b>
+   <span class="muted"> · ${String(d.created_at||'').slice(0,16).replace('T',' ')}</span>
+   <div class="muted" style="font-size:12px;margin-top:2px">${(d.reasons||[]).map(esc).join(' · ')}</div>
+  </div>`).join(''):'<span class="muted">no decisions logged for this account yet — decisions are made when the engine runs and this account has a due sequence step</span>';
+ document.getElementById('pl_draft').innerHTML=(dr.ok&&dr.data.drafts.length)?dr.data.drafts.map(x=>`
+  <div style="margin:8px 0;padding-bottom:8px;border-bottom:1px solid var(--line)">
+   <b>${esc(x.person_name||'')}</b> <span class="badge b-blue">${esc(x.channel)}</span>
+   <span class="badge ${x.status==='pending'?'b-gold':x.status==='sent'?'b-green':x.status==='rejected'?'b-red':'b-dim'}">${esc(x.status)}</span><br>
+   <b>${esc(x.subject||'')}</b><div class="muted" style="font-size:12.5px">${esc((x.body||'').slice(0,160))}${(x.body||'').length>160?'…':''}</div>
+   ${x.status==='pending'?`<button class="act" style="margin:4px 4px 0 0;padding:2px 10px" onclick="a360ApproveDraft('${x.id}','${id}')">Approve</button>
+    <button class="act" style="margin:4px 0 0;padding:2px 10px;background:var(--red)" onclick="a360RejectDraft('${x.id}','${id}')">Reject</button>`:
+    '<span class="muted" style="font-size:11.5px">full queue + edit: <a style="color:var(--gold);cursor:pointer" onclick="nav(\'approvals\')">Approvals</a></span>'}
+  </div>`).join(''):'<span class="muted">no drafts for this account yet</span>';
+ document.getElementById('pl_enr').innerHTML=(en.ok&&en.data.enrollments.length)?
+  '<table><tr><th>Contact</th><th>Step</th><th>Status</th><th>Next touch due</th></tr>'+en.data.enrollments.map(e=>
+  `<tr><td><b class="click" style="cursor:pointer;color:var(--gold)" onclick='nav("contact/${e.person_id}")'>${esc(e.person_name||e.person_id.slice(0,8))}</b></td>
+  <td>${e.current_step}</td><td><span class="badge ${e.status==='ACTIVE'?'b-green':e.status==='PAUSED'?'b-gold':'b-dim'}">${esc(e.status)}</span></td>
+  <td class="muted">${e.next_run_at?String(e.next_run_at).slice(0,16).replace('T',' '):'—'}</td></tr>`).join('')+'</table>':
+  '<span class="muted">nobody at this account is enrolled in a sequence yet</span>';};
+window.a360ApproveDraft=async(did,orgId)=>{await api('POST','/drafts/'+did+'/approve',{});plLoad(orgId);};
+window.a360RejectDraft=async(did,orgId)=>{const notes=prompt('Reason (optional):')||'';await api('POST','/drafts/'+did+'/reject',{reviewer_notes:notes});plLoad(orgId);};
 window.sg360New=id=>{document.getElementById('sgform').innerHTML=`<div class="card" style="margin-bottom:10px"><h3>New signal</h3>
  <label>Title</label><input id="sn_t"><div class="grid g3">
  <div><label>Type</label><select id="sn_y"><option>news</option><option>tender</option><option>regulatory</option><option>hiring</option><option>initiative</option></select></div>
@@ -641,18 +695,26 @@ SCREENS.contacts=async el=>{
   <button class="act" style="margin:0" onclick="dl('/export/persons','all_contacts.csv')">⬇ Export CSV</button></div>
   <div id="pform"></div><div id="plist">loading…</div></div>
  <div class="card" style="margin-top:14px"><h3>Hot leads</h3><div id="phot">—</div></div>`;
- const r=await api('GET','/persons');
+ // limit=500 is the server's maximum (routers/persons.py). Without it the
+ // endpoint defaults to 50, so "all contacts" silently meant "the first 50"
+ // with nothing on screen saying so.
+ const r=await api('GET','/persons?limit=500');
  _pplCache=r.ok?(r.data||[]):[];pFilter();
  const h=await api('GET','/sales/hot-leads');
  if(h.ok)document.getElementById('phot').innerHTML=h.data.length?h.data.map(l=>
   `<div>${esc(l.name||l.person_id.slice(0,8))} <span class="badge b-gold">${l.engagement_score}</span> <span class="muted">${l.opens}/${l.clicks}/${l.replies}</span></div>`).join(''):'<span class="muted">no engagement rows</span>';};
 window.pFilter=()=>{
  const q=(document.getElementById('pq')?.value||'').toLowerCase();
- const rows=_pplCache.filter(p=>!q||((p.full_name||'')+' '+(p.current_title||'')+' '+(p.primary_email||'')).toLowerCase().includes(q)).slice(0,60);
- document.getElementById('plist').innerHTML=rows.length?'<table><tr><th>Name</th><th>Title</th><th>Email</th><th>Tier</th><th></th></tr>'+rows.map(p=>
+ const matched=_pplCache.filter(p=>!q||((p.full_name||'')+' '+(p.current_title||'')+' '+(p.primary_email||'')).toLowerCase().includes(q));
+ // Rendering thousands of rows locks the browser, so the table is still
+ // capped -- but the cap is now VISIBLE. Silently truncating to 60 with no
+ // count is what made the list look like it was losing people.
+ const rows=matched.slice(0,200);
+ const count=`<div class="muted" style="margin-bottom:6px">Showing <b>${rows.length}</b> of <b>${matched.length}</b> matching${matched.length!==_pplCache.length?' (of '+_pplCache.length+' loaded)':''}${matched.length>rows.length?' — narrow the search to see the rest, or use Export CSV for the full set':''}</div>`;
+ document.getElementById('plist').innerHTML=rows.length?count+'<div class="table-wrap"><table><tr><th>Name</th><th>Title</th><th>Email</th><th>Tier</th><th></th></tr>'+rows.map(p=>
   `<tr><td class="click" style="cursor:pointer;color:var(--gold)" onclick='nav("contact/${p.id}")'>${esc(p.full_name)}</td><td class="muted">${esc(p.current_title||'')}</td><td class="muted">${esc(p.primary_email||'')}</td><td>${esc(p.tier||'—')}</td>
   <td style="white-space:nowrap"><button class="act gold" style="margin:0;padding:4px 10px" onclick='pEdit("${p.id}")'>edit</button>
-  <button class="act" style="margin:0;padding:4px 10px;background:var(--red)" onclick='pDel("${p.id}",${JSON.stringify(p.full_name)})'>del</button></td></tr>`).join('')+'</table>':'<span class="muted">no matches</span>';};
+  <button class="act" style="margin:0;padding:4px 10px;background:var(--red)" onclick='pDel("${p.id}",${JSON.stringify(p.full_name)})'>del</button></td></tr>`).join('')+'</table></div>':(_pplCache.length?'<span class="muted">No contacts match that search.</span>':'<span class="muted">No contacts loaded — import a CSV to get started.</span>');};
 window.pNewForm=()=>{document.getElementById('pform').innerHTML=`<div class="card" style="margin-bottom:10px">
  <label>Full name</label><input id="pnn"><label>Title</label><input id="pnt">
  <label>Email</label><input id="pne"><label>Bank (name, created if new)</label><input id="pno" value="${S.account?esc(S.account.name):''}">
@@ -687,6 +749,59 @@ window.vFilter=()=>{
   (v.edges||[]).map(e=>`<span class="badge ${e.type==='subsidiary_of'?'b-blue':'b-green'}" style="margin:3px">${e.type.replace('_of','')} → ${esc(e.to)}${e.confidence?(' ·'+Math.round(e.confidence*100)+'%'):''}</span>`).join('')+
   (v.intelligence?`<div class="muted" style="margin-top:4px">${esc((v.intelligence.products||[]).slice?String(v.intelligence.products).slice(0,140):'' )}</div>`:'')+'</div>').join(''):
   '<span class="muted">no vendor edges yet — import the ecosystem workbook via the legacy dashboard ETL, or add org relationships via API</span>';};
+
+/* ── SIGNAL REVIEW (v2, shadow mode) ── isolated 360 signal-capture engine.
+   Read/decide only. Promoting a decided signal into the real Signals list
+   above is a deliberate separate step (scripts/signal_v2_export_cli.py, run
+   by a human) — never automatic from this screen. ── */
+SCREENS.signalreview=async el=>{
+ el.innerHTML=`<h2>Signal Review <span class="badge b-dim">Shadow mode</span></h2>
+ <div class="sub">Isolated 360° account signal capture — news, careers, procurement, LinkedIn, CRM, email and website intent. Nothing here reaches the real Signals list or any outreach until it's exported on purpose from the command line.</div>
+ <div class="card" id="srstatus">loading coverage…</div>
+ <div class="card" id="srgates">loading production-readiness gates…</div>
+ <div class="card"><h3 style="margin-top:0">Open reviews</h3><div id="srqueue">loading…</div></div>
+ <div class="card"><h3 style="margin-top:0">Promoted signals (shadow DB, not yet exported)</h3><div id="srsignals">loading…</div></div>`;
+ const [st,q]=await Promise.all([api('GET','/signal-review/status'),api('GET','/signal-review?status=open')]);
+ const sEl=document.getElementById('srstatus');
+ if(!st.ok||!st.data||st.data.initialized===false){
+  sEl.innerHTML='<span class="muted">Signal Engine v2 not initialised yet on this server — run <code>python -m signal_engine.cli init</code>, then reload.</span>';
+  document.getElementById('srqueue').innerHTML='';document.getElementById('srsignals').innerHTML='';return;}
+ const s=st.data;
+ sEl.innerHTML=`<div style="display:flex;gap:22px;flex-wrap:wrap">
+  ${['accounts','sources','observations','promoted_signals','open_reviews','scoring_eligible','action_eligible'].map(k=>
+   `<div><div class="muted" style="font-size:11px">${k.replace('_',' ')}</div><div style="font-size:20px;font-weight:600">${s[k]??'—'}</div></div>`).join('')}
+ </div>`;
+ const cov=s.capture_360||{}, qual=s.quality||{};
+ const gate=(ready,label,detail)=>`<div style="flex:1;min-width:220px;padding:12px 14px;border-radius:8px;background:${ready?'var(--good-bg,#e9f9ee)':'var(--warn-bg,#fff4e5)'}">
+   <div style="font-weight:600;color:${ready?'#1a7f37':'#9a5b00'}">${ready?'✓':'⚠'} ${esc(label)}</div>
+   <div class="muted" style="font-size:12px;margin-top:2px">${detail}</div></div>`;
+ document.getElementById('srgates').innerHTML=`<h3 style="margin-top:0">Production-readiness gates <span class="muted" style="font-weight:400;font-size:12px">— both must be true before real migration, per PRODUCTION_READINESS.md</span></h3>
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+   ${gate(cov.capture_360_ready,'360° capture coverage',
+     cov.error?esc(cov.error):`${Math.round((cov.required_coverage_ratio||0)*100)}% of required account/channel checks are fresh — needs ${Math.round((cov.readiness_threshold||0.9)*100)}%`)}
+   ${gate(qual.quality_gate_ready,'Quality calibration',
+     qual.error?esc(qual.error):`${qual.reviewed_calibration_sample||0} of ${qual.minimum_calibration_sample||100} required human-reviewed samples (need ≥${Math.round((qual.minimum_agreement_rate||0.9)*100)}% agreement)`)}
+  </div>
+  ${(qual.contested_signals>0)?`<div class="muted" style="margin-top:8px;font-size:12px">${qual.contested_signals} signal(s) currently contested by a later correction/retraction — see Open reviews below.</div>`:''}`;
+ if(!q.ok){document.getElementById('srqueue').innerHTML='<span class="muted">could not load review queue</span>';return;}
+ const reviews=(q.data&&q.data.reviews)||[];
+ document.getElementById('srqueue').innerHTML=reviews.length?reviews.map(r=>
+  `<div style="margin:10px 0;padding-bottom:10px;border-bottom:1px solid var(--line)">
+   <b>${esc(r.title||'(untitled)')}</b> <span class="badge b-dim">${esc(r.reason_code||'')}</span><br>
+   <span class="muted">${esc((r.body||'').slice(0,180))}</span><br>
+   ${r.canonical_url?`<a href="${esc(r.canonical_url)}" target="_blank" rel="noopener">source ↗</a> · `:''}
+   <button class="act" style="margin:4px 4px 0 0;padding:2px 10px" onclick="srResolve('${r.id}','approve')">Approve</button>
+   <button class="act" style="margin:4px 0 0;padding:2px 10px" onclick="srResolve('${r.id}','reject')">Reject</button>
+  </div>`).join(''):'<span class="muted">no open reviews</span>';
+ const signals=(q.data&&q.data.signals)||[];
+ document.getElementById('srsignals').innerHTML=signals.length?signals.map(sg=>
+  `<div style="margin:6px 0"><span class="badge ${sg.urgency==='CRITICAL'?'b-red':sg.urgency==='HIGH'?'b-gold':'b-dim'}">${esc(sg.urgency||'')}</span> <b>${esc(sg.canonical_name||'')}</b> — ${esc(sg.title||'')}</div>`).join(''):
+  '<span class="muted">none promoted yet</span>';};
+window.srResolve=async(id,resolution)=>{
+ const acct=resolution==='approve'?prompt('Attribute to which account id? (leave blank to keep unattributed)'):null;
+ const r=await api('POST','/signal-review/'+id+'/resolve',{resolution,account:acct||null});
+ if(r.ok)SCREENS.signalreview(document.getElementById('screen'));
+ else alert('Could not resolve: '+(r.data&&r.data.detail||r.status));};
 
 /* ── CONTACT PAGE: its own route (#/contact/{id}) — the ABM person 360 ── */
 SCREENS.contact=async(el,id)=>{
@@ -749,14 +864,27 @@ SCREENS.connectors=async el=>{
   '<span class="muted">no connectors flagged — mark contacts as Connector when editing them</span>';};
 
 SCREENS.initiatives=async el=>{
- el.innerHTML='<h2>Initiatives</h2><div class="sub">Every signal/initiative across all banks — newest first.</div><div class="card"><div id="inl">loading…</div></div>';
+ el.innerHTML='<h2>Initiatives</h2><div class="sub">Every signal/initiative across all banks — newest first. Mark one <b>read</b> once you have triaged it, and <b>actioned</b> once you have actually done something about it.</div><div class="card"><div id="inl">loading…</div></div>';
+ iniLoad();};
+window.iniLoad=async()=>{
  const r=await api('GET','/bd/initiatives');
- document.getElementById('inl').innerHTML=r.ok&&r.data.length?
-  '<table><tr><th>Initiative</th><th>Bank</th><th>Type</th><th>Urgency</th><th>Value</th><th>Status</th></tr>'+r.data.map(s=>
+ const box=document.getElementById('inl');if(!box)return;
+ if(!r.ok){box.innerHTML=state(r.status===401?'Sign in to view initiatives.':'Initiatives could not be loaded.',true);return}
+ box.innerHTML=r.data.length?
+  '<div class="table-wrap"><table><tr><th>Initiative</th><th>Bank</th><th>Type</th><th>Urgency</th><th>Value</th><th>Status</th><th>Actions</th></tr>'+r.data.map(s=>
   `<tr><td>${s.url?('<a href="'+esc(s.url)+'" target="_blank" style="color:var(--gold);text-decoration:none">'+esc(s.title)+' ↗</a>'):esc(s.title)}</td><td>${esc(s.bank||'—')}</td><td><span class="badge b-blue">${esc(s.type)}</span></td>
   <td>${esc(s.urgency||'')}</td><td class="muted">${esc(s.value||'')}</td>
-  <td>${s.is_actioned?'<span class="badge b-green">actioned</span>':s.is_read?'<span class="badge b-dim">read</span>':'<span class="badge b-gold">new</span>'}</td></tr>`).join('')+'</table>':
+  <td>${s.is_actioned?'<span class="badge b-green">actioned</span>':s.is_read?'<span class="badge b-dim">read</span>':'<span class="badge b-gold">new</span>'}</td>
+  <td style="white-space:nowrap"><button class="act" style="margin:0;padding:3px 8px" onclick='iniToggle("${s.id}","read")'>${s.is_read?'mark unread':'mark read'}</button>
+  <button class="act gold" style="margin:0;padding:3px 8px" onclick='iniToggle("${s.id}","actioned")'>${s.is_actioned?'undo actioned':'mark actioned'}</button></td></tr>`).join('')+'</table></div>':
   '<span class="muted">no signals yet</span>';};
+// The backend has had POST /bd/signals/{id}/toggle?which=read|actioned all
+// along; the screen simply never called it, so the Status column was a
+// read-only label with no way to move it.
+window.iniToggle=async(id,which)=>{
+ const r=await api('POST','/bd/signals/'+id+'/toggle?which='+which);
+ if(!r.ok){toast('Could not update: '+(r.data&&r.data.detail||r.status),true);return}
+ iniLoad();};
 
 SCREENS.bd=async el=>{
  el.innerHTML=`<h2>BD Outreach</h2><div class="sub">${S.account?('Contacts at '+esc(S.account.name)):'Pick an account for its team, or work the global list.'}</div>
@@ -812,7 +940,7 @@ SCREENS.committee=async el=>{
  el.innerHTML='<h2>Buying Committee</h2><div class="planned">Select an account first (Accounts → pick a bank) — the committee module works on the account in context.</div>';};
 
 SCREENS.campaigns=async el=>{
- el.innerHTML=`<h2>Campaigns</h2><div class="sub">Build → pick audience → send (send-safe dry-run) → measure. Merge tags: {first_name} {bank}.</div>
+ el.innerHTML=`<h2>Campaigns</h2><div class="sub">Build → pick audience → send (send-safe dry-run) → measure. Merge tags: {name} {institution} {role} {city} {sender} — add a fallback with a pipe, e.g. {name|there}.</div>
  <div class="card"><button class="act" style="margin:0" onclick="cmpNewForm()">+ New campaign</button><div id="cmpform"></div></div>
  <div class="card" style="margin-top:12px"><h3>All campaigns</h3><div id="cmplist">loading…</div></div>`;
  cmpLoad();};
@@ -843,28 +971,43 @@ window.cmpNewForm=async()=>{
    ${(segs.data||[]).length?'<optgroup label="Saved segments">'+segs.data.map(s=>`<option value="seg:${s.id}">${esc(s.name)} (${s.size})</option>`).join('')+'</optgroup>':''}
  </select></div></div>
  <div id="cm_prev" class="muted" style="margin:6px 0">—</div>
- <label>Subject</label><input id="cm_s" value="Partnering on digital onboarding, {bank}">
- <label>Body (merge tags: {first_name} {bank})</label><textarea id="cm_b" rows="5">Dear {first_name},
+ <label>Subject</label><input id="cm_s" value="Partnering on digital onboarding, {institution}">
+ <label>Body (merge tags: {name} {institution} {role} {city} {sender})</label><textarea id="cm_b" rows="5">Dear {name|there},
 
-We have been following {bank}'s digital initiatives closely...</textarea>
+We have been following {institution|your institution}'s digital initiatives closely...</textarea>
  <button class="act" onclick="cmpCreate()">Create campaign →</button>
  <button class="act" style="background:var(--line)" onclick="document.getElementById('cmpform').innerHTML=''">Cancel</button>
  <div class="muted" style="margin-top:6px">Send-safe: sending builds, personalizes and logs every message with analytics, but nothing reaches a real inbox until SES credentials are configured. C-suite is always held for human review.</div></div>`;
  cmpAudPreview();};
-window.cmpAudPreview=async()=>{
+window.cmpAudSpec=()=>{
  const v=document.getElementById('cm_a').value;
- let body={name:'preview',builtin:v};
- if(v.startsWith('seg:'))body={name:'preview',segment_id:v.slice(4),builtin:null};
- else if(v.startsWith('bank:'))body={name:'preview',builtin:v};
- // create a throwaway audience just to count — cheap
- const a=await api('POST','/mkt/audiences',body);
- if(a.ok)document.getElementById('cm_prev').innerHTML='👥 This audience has <b style="color:var(--gold)">'+a.data.members+'</b> contacts';
- window._lastAud=a.ok?a.data.id:null;};
+ if(v.startsWith('seg:'))return{name:'preview',segment_id:v.slice(4),builtin:null};
+ return{name:'preview',builtin:v};};
+window.cmpAudPreview=async()=>{
+ // Read-only count: /mkt/audiences/preview creates nothing. (It used to call
+ // the create endpoint, which left a throwaway audience behind on every
+ // keystroke of the dropdown.)
+ const body=cmpAudSpec();
+ // The selection itself is what Create uses -- NOT the preview result. The
+ // preview only ever failing (older server, 401, network blip) used to leave
+ // _lastAudSpec null, so Create refused with "Pick a valid audience first"
+ // no matter how many times you picked one. The dropdown always has a valid
+ // value, so the spec is always valid; the preview is decoration.
+ window._lastAudSpec=body;
+ const a=await api('POST','/mkt/audiences/preview',body);
+ const box=document.getElementById('cm_prev');
+ if(!box)return;
+ box.innerHTML=a.ok
+  ?`Audience: <b style="color:var(--gold)">${a.data.members}</b> contacts; ${a.data.eligible} send-eligible; ${a.data.held_for_human} c-suite held for approval`
+  :`<span class="muted">Could not preview this audience (${a.status}) — you can still create the campaign; the exact recipients are resolved at send time.</span>`;};
 window.cmpCreate=async()=>{
- if(!window._lastAud){alert('pick an audience');return}
- const r=await api('POST','/mkt/campaigns',{name:v2('cm_n'),audience_id:window._lastAud,subject:v2('cm_s'),body:v2('cm_b')});
+ const spec=window._lastAudSpec||cmpAudSpec();
+ if(!spec||!(spec.builtin||spec.segment_id)){toast('Pick an audience first.',true);return}
+ window._lastAudSpec=spec;
+ const aud=await api('POST','/mkt/audiences',{...window._lastAudSpec,name:v2('cm_n')+' audience'});if(!aud.ok){toast('Audience creation failed.',true);return}
+ const r=await api('POST','/mkt/campaigns',{name:v2('cm_n'),audience_id:aud.data.id,subject:v2('cm_s'),body:v2('cm_b')});
  if(r.ok){document.getElementById('cmpform').innerHTML='';nav('campaign/'+r.data.id);}else alert(JSON.stringify(r.data));};
-window.cmpSend=async id=>{await api('POST','/mkt/campaigns/'+id+'/send');nav('campaign/'+id);};
+window.cmpSend=async id=>{const r=await api('POST','/mkt/campaigns/'+id+'/send');if(!r.ok){toast('Campaign dry-run failed: '+(r.data&&r.data.detail||r.status),true);return}toast(`Dry-run complete: ${r.data.sent} sent, ${r.data.held_for_human||0} held for approval, ${r.data.blocked} blocked.`);nav('campaign/'+id);};
 window.cmpReport=id=>nav('campaign/'+id);
 
 /* Campaign detail page (its own route) */
@@ -1027,11 +1170,120 @@ SCREENS.tasks=async el=>{
 window.tDay=async()=>{const r=await api('GET','/crm/tasks/my-day/'+encodeURIComponent(document.getElementById('tas').value));
  document.getElementById('tday').textContent=JSON.stringify(r.data,null,1);};
 
+SCREENS.approvals=async el=>{
+ _appr={status:'pending',page:1};
+ el.innerHTML=`<h2>Approvals</h2><div class="sub">Every AI-drafted outreach message, in one queue. Delivery is hardcoded dry-run — nothing sends for real — but this is exactly what would go out if it were switched on, so review it like it will.</div>
+ <div class="tabs" id="aptabs"></div>
+ <div class="card" id="apcounts">loading…</div>
+ <div id="aplist">loading…</div>
+ <div id="appage" class="muted" style="margin-top:8px"></div>`;
+ apTabs();apLoad();};
+function apTabs(){
+ const labels={pending:'Pending',approved:'Approved',rejected:'Rejected',sent:'Sent (dry-run)','':'All'};
+ document.getElementById('aptabs').innerHTML=Object.keys(labels).map(t=>
+  `<button class="${_appr.status===t?'on':''}" onclick="apSetStatus('${t}')">${labels[t]}</button>`).join('');}
+window.apSetStatus=s=>{_appr.status=s;_appr.page=1;apTabs();apLoad();};
+let _appr={status:'pending',page:1};
+let _apRows={};
+window.apLoad=async()=>{
+ const p=new URLSearchParams({status:_appr.status,page:_appr.page});
+ const r=await api('GET','/drafts?'+p);
+ if(!r.ok){document.getElementById('aplist').innerHTML='<span class="muted">could not load</span>';return;}
+ const d=r.data;_apRows={};d.drafts.forEach(x=>_apRows[x.id]=x);
+ document.getElementById('apcounts').innerHTML=`<div style="display:flex;gap:22px;flex-wrap:wrap">
+  ${['pending','approved','rejected','sent'].map(s=>`<div><div class="muted" style="font-size:11px">${s}</div><div style="font-size:20px;font-weight:600">${d.status_counts[s]??0}</div></div>`).join('')}
+ </div>`;
+ document.getElementById('aplist').innerHTML=d.drafts.length?d.drafts.map(x=>`
+  <div class="card" style="margin-bottom:10px">
+   <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div><b class="click" style="cursor:pointer;color:var(--gold)" ${x.person_id?`onclick='nav("contact/${x.person_id}")'`:''}>${esc(x.person_name||'(no contact linked)')}</b>
+     ${x.seniority==='c_suite'?'<span class="badge b-gold">c-suite — human hold</span>':''}
+     <span class="muted"> · ${esc(x.org_name||'')}</span> <span class="badge b-blue">${esc(x.channel)}</span>
+     <span class="badge ${x.status==='pending'?'b-gold':x.status==='sent'?'b-green':x.status==='rejected'?'b-red':'b-dim'}">${esc(x.status)}</span></div>
+    <div class="muted" style="font-size:11.5px">step ${x.sequence_step||1} · ${String(x.created_at||'').slice(0,16).replace('T',' ')}</div>
+   </div>
+   <div style="margin-top:8px"><b>${esc(x.subject||'')}</b></div>
+   <pre>${esc(x.body||'')}</pre>
+   ${x.status==='pending'?`
+    <button class="act" style="margin:4px 4px 0 0" onclick="apApprove('${x.id}')">Approve</button>
+    <button class="act" style="margin:4px 4px 0 0;background:var(--red)" onclick="apReject('${x.id}')">Reject</button>
+    <button class="act" style="margin:4px 0 0;background:var(--blue)" onclick="apEdit('${x.id}')">Edit</button>`:
+    (x.reviewer_notes?`<div class="muted" style="margin-top:6px">note: ${esc(x.reviewer_notes)}</div>`:'')}
+   <div id="apedit_${x.id}"></div>
+  </div>`).join(''):'<span class="muted">nothing here</span>';
+ let pg='page '+d.page+' / '+d.pages+' · '+d.total+' total';
+ if(d.page>1)pg+=' · <a style="color:var(--gold);cursor:pointer" onclick="_appr.page--;apLoad()">← prev</a>';
+ if(d.page<d.pages)pg+=' · <a style="color:var(--gold);cursor:pointer" onclick="_appr.page++;apLoad()">next →</a>';
+ document.getElementById('appage').innerHTML=pg;};
+window.apApprove=async id=>{const r=await api('POST','/drafts/'+id+'/approve',{});if(r.ok){alert('Approved. It will be safety-checked and dry-run dispatched on the next engine cycle.');apLoad();}else alert('failed: '+(r.data&&r.data.detail||r.status));};
+window.apReject=async id=>{const notes=(prompt('Reason for rejecting (required):')||'').trim();
+ if(!notes){alert('A rejection reason is required for the audit trail.');return;}
+ const r=await api('POST','/drafts/'+id+'/reject',{reviewer_notes:notes});if(r.ok)apLoad();else alert('failed: '+(r.data&&r.data.detail||r.status));};
+window.apEdit=id=>{const x=_apRows[id];if(!x)return;
+ document.getElementById('apedit_'+id).innerHTML=`
+ <label>Subject</label><input id="ape_s_${id}" value="${esc(x.subject||'')}">
+ <label>Body</label><textarea id="ape_b_${id}" rows="6">${esc(x.body||'')}</textarea>
+ <button class="act" onclick="apSaveEdit('${id}')">Save</button>
+ <button class="act" style="background:var(--line)" onclick="document.getElementById('apedit_${id}').innerHTML=''">Cancel</button>`;};
+window.apSaveEdit=async id=>{
+ const r=await api('PATCH','/drafts/'+id,{subject:document.getElementById('ape_s_'+id).value,body:document.getElementById('ape_b_'+id).value});
+ if(r.ok)apLoad();else alert('failed to save');};
+
 SCREENS.sequences=async el=>{
- el.innerHTML='<h2>Sequences</h2><div class="sub">Automated cadences (send-safe).</div><div class="card"><div id="sq">—</div></div>';
+ _sqEnr={status:'ACTIVE',page:1};
+ el.innerHTML=`<h2>Sequences</h2><div class="sub">Automated cadences — who's actually enrolled, at what step, and when their next touch fires. Nothing here sends for real; "run engine now" drafts + dry-run-sends whatever is genuinely due this instant.</div>
+ <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+  <div id="sq">loading definitions…</div>
+  <button class="act gold" style="margin:0" onclick="sqRunEngine(event)">▶ Run engine now</button></div>
+  <div id="sqtickout" class="muted" style="margin-top:8px"></div></div>
+ <div class="tabs" id="sqetabs"></div>
+ <div class="card" id="sqecounts">loading…</div>
+ <div id="sqelist">loading…</div>
+ <div id="sqepage" class="muted" style="margin-top:8px"></div>`;
  const r=await api('GET','/sequences');
- document.getElementById('sq').innerHTML=r.ok&&r.data.length?'<table><tr><th>Name</th><th>Type</th></tr>'+r.data.map(s=>
-  `<tr><td>${esc(s.name)}</td><td class="muted">${esc(s.relationship_type||'')}</td></tr>`).join('')+'</table>':'<span class="muted">none yet</span>';};
+ document.getElementById('sq').innerHTML=r.ok&&r.data.length?'<table><tr><th>Name</th><th>Type</th><th>Steps</th></tr>'+r.data.map(s=>
+  `<tr><td>${esc(s.name)}</td><td class="muted">${esc(s.relationship_type||'default')}</td><td class="muted">${(s.steps||[]).length}</td></tr>`).join('')+'</table>':'<span class="muted">none yet — <a style="color:var(--gold);cursor:pointer" onclick="sqEnsureDefault()">create the default sequence</a></span>';
+ sqeTabs();sqeLoad();};
+window.sqEnsureDefault=async()=>{await api('POST','/sequences/ensure-default');SCREENS.sequences(document.getElementById('screen'));};
+window.sqRunEngine=async ev=>{
+ const btn=ev.currentTarget;btn.disabled=true;btn.textContent='running…';
+ const r=await api('POST','/engine/tick?limit=25&respect_send_window=true');
+ btn.disabled=false;btn.textContent='▶ Run engine now';
+ if(!r.ok){document.getElementById('sqtickout').textContent='failed: '+r.status;return;}
+ const t=r.data;
+ document.getElementById('sqtickout').innerHTML=t.skipped?
+  `<span class="badge b-dim">skipped</span> ${esc(t.skipped)}`:
+  `approved dispatched ${t.approved_dispatched||0} · due ${t.due} · drafted ${t.drafted} · held for human ${t.held_for_human} · qc failed ${t.qc_failed} · dry-run sent ${t.sent_dry_run} · advanced ${t.advanced} · ${(t.approved_blocked||[]).length} blocked approval(s) · ${t.orgs_rescored.length} account(s) rescored`;
+ sqeLoad();};
+let _sqEnr={status:'ACTIVE',page:1};
+function sqeTabs(){
+ const labels={ACTIVE:'Active',PAUSED:'Paused',COMPLETED:'Completed',EXITED:'Exited','':'All'};
+ document.getElementById('sqetabs').innerHTML=Object.keys(labels).map(t=>
+  `<button class="${_sqEnr.status===t?'on':''}" onclick="sqeSetStatus('${t}')">${labels[t]}</button>`).join('');}
+window.sqeSetStatus=s=>{_sqEnr.status=s;_sqEnr.page=1;sqeTabs();sqeLoad();};
+window.sqeLoad=async()=>{
+ const p=new URLSearchParams({status:_sqEnr.status,page:_sqEnr.page});
+ const r=await api('GET','/sequences/enrollments?'+p);
+ if(!r.ok){document.getElementById('sqelist').innerHTML='<span class="muted">could not load</span>';return;}
+ const d=r.data;
+ document.getElementById('sqecounts').innerHTML=`<div style="display:flex;gap:22px;flex-wrap:wrap">
+  ${['ACTIVE','PAUSED','COMPLETED','EXITED'].map(s=>`<div><div class="muted" style="font-size:11px">${s.toLowerCase()}</div><div style="font-size:20px;font-weight:600">${d.status_counts[s]??0}</div></div>`).join('')}
+ </div>`;
+ document.getElementById('sqelist').innerHTML=d.enrollments.length?
+  '<table><tr><th>Contact</th><th>Account</th><th>Step</th><th>Status</th><th>Next touch due</th><th>Actions</th></tr>'+d.enrollments.map(e=>
+  `<tr><td><b class="click" style="cursor:pointer;color:var(--gold)" onclick='nav("contact/${e.person_id}")'>${esc(e.person_name||e.person_id.slice(0,8))}</b></td>
+  <td class="muted">${esc(e.org_name||'')}</td><td>${e.current_step}</td>
+  <td><span class="badge ${e.status==='ACTIVE'?'b-green':e.status==='PAUSED'?'b-gold':'b-dim'}">${esc(e.status)}</span>${e.pause_reason?' <span class="muted">('+esc(e.pause_reason)+')</span>':''}</td>
+  <td class="muted">${e.next_run_at?String(e.next_run_at).slice(0,16).replace('T',' '):'—'}</td>
+  <td style="white-space:nowrap">${e.status==='ACTIVE'?`<button class="act" style="margin:0;padding:3px 8px;background:var(--line)" onclick="sqePause('${e.id}')">pause</button>`:''}
+  ${e.status==='PAUSED'?`<button class="act" style="margin:0;padding:3px 8px" onclick="sqeResume('${e.id}')">resume</button>`:''}</td></tr>`).join('')+'</table>':
+  '<span class="muted">no enrollments in this status</span>';
+ let pg='page '+d.page+' / '+d.pages+' · '+d.total+' total';
+ if(d.page>1)pg+=' · <a style="color:var(--gold);cursor:pointer" onclick="_sqEnr.page--;sqeLoad()">← prev</a>';
+ if(d.page<d.pages)pg+=' · <a style="color:var(--gold);cursor:pointer" onclick="_sqEnr.page++;sqeLoad()">next →</a>';
+ document.getElementById('sqepage').innerHTML=pg;};
+window.sqePause=async id=>{const r=await api('POST','/sequences/enrollments/'+id+'/pause',{reason:'manual'});if(r.ok)sqeLoad();else alert('Pause failed: '+(r.data&&r.data.detail||r.status));};
+window.sqeResume=async id=>{const r=await api('POST','/sequences/enrollments/'+id+'/resume');if(r.ok)sqeLoad();else alert('Resume failed: '+(r.data&&r.data.detail||r.status));};
 
 SCREENS.quotes=async el=>{
  el.innerHTML=`<h2>Quotes & Products</h2><div class="sub">Money-correct CPQ in SAR.</div>
@@ -1168,6 +1420,59 @@ window.sLogin=async()=>{const r=await api('POST','/auth/login',{email:document.g
   document.getElementById('sst').textContent='signed in ✓ ('+r.data.role+')';document.getElementById('who').textContent=r.data.role;}
  else document.getElementById('sst').textContent=(r.data&&r.data.detail)||'failed';};
 window.sOut=()=>{S.token=null;localStorage.removeItem('drip_token');document.getElementById('sst').textContent='signed out';document.getElementById('who').textContent='Sign in';};
+
+SCREENS.growth=async el=>{
+ el.innerHTML=`<div class="screen-head"><div><h2>Growth Operations</h2><div class="sub">The single ABM + marketing automation + CRM lifecycle. Every stage below is backed by the shared DRIP data model.</div></div><div class="actions"><button class="act gold" style="margin:0" onclick="nav('signalreview')">Signals</button><button class="act" style="margin:0" onclick="nav('campaigns')">Campaigns</button><button class="act" style="margin:0" onclick="nav('pipeline')">CRM pipeline</button></div></div>
+ <div class="status-strip"><div class="status-item"><strong>ABM</strong> identify + interpret</div><div class="status-item"><strong>Marketing</strong> segment + nurture</div><div class="status-item"><strong>CRM</strong> engage + progress revenue</div><div class="status-item"><strong>Safety</strong> consent + human gates</div></div><div id="gbody">loading unified operations...</div>`;
+ const r=await api('GET','/dashboard/growth-operations');const b=document.getElementById('gbody');if(!r.ok){b.innerHTML=state(r.status===401?'Sign in to view growth operations.':'Unified operations could not be loaded.',true,r.status===401?'<button class="act" onclick="nav(\'settings\')">Go to sign in</button>':'<button class="act" onclick="SCREENS.growth(document.getElementById(\'screen\'))">Retry</button>');return}const d=r.data,f=d.flow,q=d.queues,m=d.marketing;
+ const stages=[['1. Accounts',f.accounts_monitored,'monitored'],['2. Signals',f.signals_7d,'captured in 7 days'],['3. Contacts',f.contactable_people,'contactable'],['4. Nurture',f.active_nurture,'active journeys + sequences'],['5. Engaged',f.engaged_people,'people responding'],['6. Pipeline',f.open_deals,'open deals']];
+ b.innerHTML=`<div class="card"><h3>Revenue lifecycle</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px">${stages.map((x,i)=>`<div style="padding:12px;border:1px solid var(--line);border-radius:9px"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div><div class="muted metric-note">${x[2]}</div></div>`).join('')}</div></div>
+ <div class="grid g2" style="margin-top:14px"><div class="card"><h3>Operator queues</h3><div class="sr-source"><b>Campaign approvals</b><span class="badge ${q.campaign_approvals?'b-gold':'b-green'}">${q.campaign_approvals}</span><button class="act" style="margin:0" onclick="nav('approvals')">Open</button></div><div class="sr-source"><b>Open CRM tasks</b><span class="badge b-blue">${q.tasks_open}</span><button class="act" style="margin:0" onclick="nav('tasks')">Open</button></div><div class="sr-source"><b>Failed delivery</b><span class="badge ${q.failed_delivery?'b-red':'b-green'}">${q.failed_delivery}</span><button class="act" style="margin:0" onclick="nav('health')">Inspect</button></div></div>
+ <div class="card"><h3>Marketing automation</h3>${kpi('Campaigns',m.campaigns,m.campaigns_active+' currently scheduled/running')}${kpi('Journeys',m.journeys,m.journey_enrollments_active+' active enrollments')}${kpi('Messages',m.messages,m.suppressed+' suppressed contacts')}</div></div>
+ <div class="card" style="margin-top:14px"><h3>Enforced controls</h3><span class="badge b-green">consent at enrollment + send</span> <span class="badge b-green">c-suite human approval</span> <span class="badge b-green">touch attribution + account rescore</span> <span class="badge b-gold">real delivery disabled</span></div>`;};
+
+SCREENS.journeys=async el=>{
+ el.innerHTML=`<div class="screen-head"><div><h2>Customer Journeys</h2><div class="sub">Mailchimp-style nurture running on the same CRM contacts, consent rules, attribution and ABM account scores.</div></div><button class="act gold" style="margin:0" onclick="jTickUnified()">Run due journeys</button></div>
+ <div class="grid g2"><div class="card"><h3>Create journey</h3><label>Name</label><input id="jn" value="KSA account nurture"><label>First email subject</label><input id="jsub" value="An idea for {institution}"><label>First email</label><textarea id="jbody" rows="4">Dear {name|there}, we are following {institution|your institution}'s digital priorities.</textarea><button class="act" onclick="jMakeUnified()">Create journey</button></div>
+ <div class="card"><h3>Enroll a CRM contact</h3><label>Journey</label><select id="jj"></select><label>Contact</label><select id="jp"></select><button class="act" onclick="jEnrollUnified()">Enroll</button><div id="jmsg" class="muted" style="margin-top:8px"></div></div></div>
+ <div class="card" style="margin-top:14px"><h3>Journey operations</h3><div id="jlist">loading...</div></div>`;
+ const [js,ps]=await Promise.all([api('GET','/mkt/journeys'),api('GET','/persons')]);window._journeys=js.ok?js.data:[];document.getElementById('jj').innerHTML=window._journeys.map(j=>`<option value="${j.id}">${esc(j.name)}</option>`).join('');document.getElementById('jp').innerHTML=(ps.ok?ps.data:[]).filter(p=>p.primary_email).slice(0,500).map(p=>`<option value="${p.id}">${esc(p.full_name)} - ${esc(p.primary_email)}</option>`).join('');jRenderUnified();};
+window.jRenderUnified=()=>{const rows=window._journeys||[];document.getElementById('jlist').innerHTML=rows.length?'<div class="table-wrap"><table><tr><th>Journey</th><th>Status</th><th>Nodes</th><th>Active contacts</th></tr>'+rows.map(j=>`<tr><td><b>${esc(j.name)}</b></td><td><span class="badge ${j.status==='active'?'b-green':'b-dim'}">${esc(j.status)}</span></td><td>${j.nodes}</td><td>${j.active_enrollments}</td></tr>`).join('')+'</table></div>':state('No journeys yet. Create the first one above.');};
+window.jMakeUnified=async()=>{const nodes=[{id:'email1',type:'send',subject:v2('jsub'),body:v2('jbody'),next:'wait1'},{id:'wait1',type:'wait',hours:72,next:'opened'},{id:'opened',type:'branch',on:'opened',yes:'thanks',no:'nudge'},{id:'thanks',type:'send',subject:'Thank you, {name|there}',body:'Would a short discussion help?',next:'exit'},{id:'nudge',type:'send',subject:'Worth revisiting?',body:'Sharing this in case it is relevant to {institution|your institution}.',next:'exit'},{id:'exit',type:'exit'}];const r=await api('POST','/mkt/journeys',{name:v2('jn'),nodes});if(!r.ok){toast('Journey creation failed: '+(r.data&&r.data.detail||r.status),true);return}toast('Journey created.');SCREENS.journeys(document.getElementById('screen'));};
+window.jEnrollUnified=async()=>{const jid=v2('jj'),pid=v2('jp');if(!jid||!pid){toast('Choose a journey and contact.',true);return}const r=await api('POST','/mkt/journeys/'+jid+'/enroll',{person_id:pid});if(r.ok){toast('Contact enrolled with consent and suppression checks.');SCREENS.journeys(document.getElementById('screen'))}else toast('Enrollment blocked: '+(r.data&&r.data.detail||r.status),true);};
+window.jTickUnified=async()=>{const r=await api('POST','/mkt/journeys/tick');if(r.ok){toast(`Journey tick: ${r.data.sends} dry-run sent, ${r.data.blocked||0} blocked, ${r.data.accounts_rescored||0} accounts rescored.`);SCREENS.journeys(document.getElementById('screen'))}else toast('Journey tick failed.',true);};
+
+/* Dashboard v2: operational hierarchy and signal-first command view. Defined
+   here to supersede the legacy compact screens while keeping old routes safe. */
+SCREENS.dashboard=async el=>{
+ el.innerHTML=`<div class="screen-head"><div><h2>Command Dashboard</h2><div class="sub">What needs attention now: signal readiness, human approvals, active sequences and revenue movement.</div></div><div class="actions"><button class="act gold" style="margin:0" onclick="nav('signalreview')">Review signals</button><button class="act" style="margin:0" onclick="nav('approvals')">Open approvals</button></div></div>
+ <div class="status-strip"><div class="status-item"><strong>Shadow mode</strong> outreach disabled</div><div class="status-item"><strong>Human gate</strong> c-suite drafts</div><div class="status-item"><strong>Signal gate</strong> quality + coverage required</div></div>
+ <div class="grid g4" id="dk">${kpi('Pipeline','...','loading')+kpi('Accounts','...','loading')+kpi('Signals','...','loading')+kpi('Email','...','loading')}</div>
+ <div class="grid g2" style="margin-top:14px"><div class="card"><h3>Signal operations</h3><div id="dsignal">loading readiness...</div></div><div class="card"><h3>Work queues</h3><div id="dwork">loading queues...</div></div></div>
+ <div class="grid g2" style="margin-top:14px"><div class="card"><h3>Priority accounts</h3><div id="dacc">loading...</div></div><div class="card"><h3>Hot leads</h3><div id="dhot">loading...</div></div></div>`;
+ const [r,a,sr,ap,en]=await Promise.all([api('GET','/dashboard/executive'),api('GET','/organizations'),api('GET','/signal-review/status'),api('GET','/drafts?status=pending&page=1'),api('GET','/sequences/enrollments?status=ACTIVE&page=1')]);
+ if(!r.ok){el.innerHTML+=state(r.status===401?'Sign in to load operational metrics.':'Dashboard metrics could not be loaded.',true,`<button class="act" onclick="${r.status===401?"nav('settings')":"route()"}">${r.status===401?'Go to sign in':'Retry'}</button>`);return}const d=r.data;
+ document.getElementById('dk').innerHTML=kpi('Pipeline',d.pipeline_sar,'weighted '+d.weighted_sar)+kpi('Accounts',d.accounts,d.contacts.toLocaleString()+' contacts')+kpi('Signals / week',d.signals_this_week,'')+kpi('Email open rate',d.email.open_rate+'%','click '+d.email.click_rate+'%');
+ document.getElementById('dacc').innerHTML=a.ok&&(a.data||[]).length?'<div class="table-wrap"><table>'+a.data.slice(0,8).map(o=>`<tr class="click" onclick='setAccount("${o.id}",${JSON.stringify(o.canonical_name)});nav("accounts/${o.id}")'><td>${esc(o.canonical_name)}</td></tr>`).join('')+'</table></div>':state(a.ok?'No accounts yet.':'Accounts unavailable.',!a.ok);
+ document.getElementById('dhot').innerHTML=d.hot_leads.length?d.hot_leads.map(h=>`<div class="click" style="padding:5px 0;cursor:pointer" onclick='nav("contact/${h.person_id}")'><b style="color:var(--gold)">${esc(h.name||'(unnamed contact)')}</b>${h.org?' <span class="muted">— '+esc(h.org)+'</span>':''} <span class="badge b-gold">${h.score}</span></div>`).join(''):state('No engagement-qualified leads yet.');
+ if(sr.ok&&sr.data&&sr.data.initialized!==false){const x=sr.data,c=x.capture_360||{},q=x.quality||{};document.getElementById('dsignal').innerHTML=`<div class="grid g2"><div><div class="kpi">${Math.round((c.required_coverage_ratio||0)*100)}%</div><div class="muted metric-note">fresh required source coverage</div></div><div><div class="kpi">${x.open_reviews||0}</div><div class="muted metric-note">open evidence reviews</div></div></div><div style="margin-top:12px"><span class="badge ${c.capture_360_ready?'b-green':'b-gold'}">coverage ${c.capture_360_ready?'ready':'blocked'}</span> <span class="badge ${q.quality_gate_ready?'b-green':'b-gold'}">quality ${q.quality_gate_ready?'ready':'blocked'}</span></div><button class="act gold" onclick="nav('signalreview')">Open Signal Command Center</button>`}else document.getElementById('dsignal').innerHTML=state('Signal Engine v2 is not available.',true);
+ const pending=ap.ok?(ap.data.status_counts.pending||0):'-',active=en.ok?(en.data.status_counts.ACTIVE||0):'-';document.getElementById('dwork').innerHTML=`<div class="grid g2"><div><div class="kpi">${pending}</div><div class="muted metric-note">drafts awaiting review</div></div><div><div class="kpi">${active}</div><div class="muted metric-note">active enrollments</div></div></div><div class="actions" style="margin-top:10px"><button class="act" onclick="nav('approvals')">Review drafts</button><button class="act" onclick="nav('sequences')">Manage sequences</button></div>`;};
+
+SCREENS.signalreview=async el=>{
+ el.innerHTML=`<div class="screen-head"><div><h2>Signal Command Center <span class="badge b-dim">Shadow mode</span></h2><div class="sub">Evidence-first capture across news, careers, procurement, LinkedIn, CRM, email and website intent. No signal reaches scoring or outreach without attribution, quality and human-review gates.</div></div><div class="actions"><button class="act" style="margin:0" onclick="SCREENS.signalreview(document.getElementById('screen'))">Refresh</button><button class="act gold" style="margin:0" onclick="nav('signals')">Production signal inbox</button></div></div>
+ <div class="status-strip"><div class="status-item"><strong>Capture</strong> observe continuously</div><div class="status-item"><strong>Interpret</strong> classify + corroborate</div><div class="status-item"><strong>Review</strong> resolve ambiguity</div><div class="status-item"><strong>Promote</strong> deliberate export only</div></div>
+ <div class="grid g4" id="srstatus"></div><div class="card" id="srgates" style="margin-top:14px">loading gates...</div>
+ <div class="grid g2" style="margin-top:14px"><div class="card"><h3>Source health and coverage</h3><div id="srsources">loading...</div></div><div class="card"><h3>Interpretation policy</h3><div class="muted" style="line-height:1.55">Wrong signal: retain evidence, mark contested, and prevent action.<br>Incomplete signal: collect corroboration or route to review.<br>No source access: show the coverage gap; never infer an observation.<br>Ambiguous account: require human attribution; never guess.<br>Stale evidence: decay confidence and remove action eligibility.</div></div></div>
+ <div class="card" style="margin-top:14px"><div class="screen-head"><div><h3>Open evidence reviews</h3><div class="muted">Resolve source conflicts, missing attribution and ambiguous aliases.</div></div><select id="srfilter" style="width:190px" onchange="srFilter()"><option value="">All reasons</option><option value="unattributed">Unattributed</option><option value="ambiguous">Ambiguous</option><option value="contested">Contested</option></select></div><div id="srqueue">loading...</div></div>
+ <div class="card" style="margin-top:14px"><h3>Promoted shadow signals</h3><div id="srsignals">loading...</div></div>`;
+ const [st,q,cov]=await Promise.all([api('GET','/signal-review/status'),api('GET','/signal-review?status=open'),api('GET','/signal-review/coverage')]);
+ if(!st.ok||!st.data||st.data.initialized===false){document.getElementById('srstatus').innerHTML=state(st.status===401?'Sign in to inspect signal evidence and source coverage.':'Signal Engine v2 is not initialized on this server.',true,st.status===401?'<button class="act" onclick="nav(\'settings\')">Go to sign in</button>':'');document.getElementById('srgates').innerHTML='';document.getElementById('srsources').innerHTML='';document.getElementById('srqueue').innerHTML='';document.getElementById('srsignals').innerHTML='';return}
+ const s=st.data,c=s.capture_360||{},qual=s.quality||{};document.getElementById('srstatus').innerHTML=kpi('Accounts',s.accounts||0,'monitored')+kpi('Sources',s.sources||0,'configured')+kpi('Observations',s.observations||0,'captured')+kpi('Open reviews',s.open_reviews||0,'need a decision');
+ const gate=(ok,label,detail)=>`<div class="card" style="border-color:${ok?'var(--green)':'var(--gold)'}"><b>${ok?'Ready':'Blocked'} - ${esc(label)}</b><div class="muted metric-note">${esc(detail)}</div></div>`;document.getElementById('srgates').innerHTML=`<h3>Production-readiness gates</h3><div class="grid g2">${gate(c.capture_360_ready,'360 coverage',c.error||`${Math.round((c.required_coverage_ratio||0)*100)}% fresh; target ${Math.round((c.readiness_threshold||.9)*100)}%`)}${gate(qual.quality_gate_ready,'Human calibration',qual.error||`${qual.reviewed_calibration_sample||0}/${qual.minimum_calibration_sample||100} samples reviewed`)}</div>`;
+ const src=(cov.ok&&Array.isArray(cov.data.by_channel))?cov.data.by_channel:[];document.getElementById('srsources').innerHTML=src.length?src.map(x=>`<div class="sr-source"><b>${esc(x.channel.replace(/_/g,' '))}</b><span class="badge ${x.coverage_ratio>=.9?'b-green':x.coverage_ratio>0?'b-gold':'b-red'}">${Math.round(x.coverage_ratio*100)}% covered</span><span class="muted">${x.covered_accounts}/${x.required_accounts} required accounts</span></div>`).join(''):state(cov.ok?'No required channel coverage configured.':'Coverage endpoint unavailable.',!cov.ok);
+ window._srReviews=q.ok?(q.data.reviews||[]):[];window._srSignals=q.ok?(q.data.signals||[]):[];srFilter();
+ document.getElementById('srsignals').innerHTML=window._srSignals.length?window._srSignals.map(x=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="badge ${x.urgency==='CRITICAL'?'b-red':x.urgency==='HIGH'?'b-gold':'b-dim'}">${esc(x.urgency||'unknown')}</span> <b>${esc(x.canonical_name||'Unattributed')}</b> - ${esc(x.title||'')}</div>`).join(''):state('No promoted shadow signals.');};
+window.srFilter=()=>{const box=document.getElementById('srqueue');if(!box)return;const f=(document.getElementById('srfilter').value||'').toLowerCase(),rows=(window._srReviews||[]).filter(x=>!f||String(x.reason_code||'').toLowerCase().includes(f));box.innerHTML=rows.length?rows.map(r=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div><b>${esc(r.title||'(untitled)')}</b> <span class="badge b-gold">${esc(r.reason_code||'review')}</span></div><div class="muted metric-note">${esc((r.body||'').slice(0,240))}</div><div class="actions">${r.canonical_url?`<a href="${esc(r.canonical_url)}" target="_blank" rel="noopener" style="color:var(--gold)">Open evidence</a>`:''}<button class="act" onclick="srResolve('${r.id}','approve')">Approve</button><button class="act" style="background:var(--red)" onclick="srResolve('${r.id}','reject')">Reject</button></div></div>`).join(''):state('No reviews match this filter.');};
 
 /* ═══════════ boot ═══════════ */
 buildNav();ctx();route();notifDot();

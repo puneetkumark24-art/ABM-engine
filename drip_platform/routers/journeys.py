@@ -33,6 +33,16 @@ class EnrollReq(BaseModel):
     person_id: str
 
 
+@router.get("")
+def list_journeys(db: Session = Depends(get_db)):
+    import models_s3 as m3
+    rows = db.query(m3.JourneyDef).order_by(m3.JourneyDef.created_at.desc()).all()
+    return [{"id": j.id, "name": j.name, "status": j.status,
+             "nodes": len(j.nodes or []),
+             "active_enrollments": db.query(m3.JourneyEnrollment).filter_by(
+                 journey_id=j.id, status="active").count()} for j in rows]
+
+
 @router.post("/{journey_id}/enroll", status_code=201)
 def enroll(journey_id: str, req: EnrollReq, db: Session = Depends(get_db)):
     try:

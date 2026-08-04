@@ -137,3 +137,10 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+def test_sprint5_copilot():
+    try:
+        run()
+    except SystemExit as e:
+        assert not e.code, f"test_sprint5_copilot reported failing checks (exit code {e.code})"
