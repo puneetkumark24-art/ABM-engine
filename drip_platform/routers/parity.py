@@ -13,6 +13,29 @@ router = APIRouter(tags=["parity"])
 
 
 # ── LLM core ────────────────────────────────────────────────
+@router.get("/ai/status")
+def ai_status():
+    """Is an AI actually answering right now — and if not, exactly why.
+
+    Deliberately probes the local server rather than reporting configuration:
+    "LOCAL_LLM=true is set" and "a model will answer" are different claims, and
+    the screen must not show the second when it only knows the first.
+    """
+    prov = llm_core.active_provider()
+    local = llm_core.local_llm_status()
+    if prov is None:
+        mode, detail = "dry_run", ("No AI configured — drafts use the deterministic "
+                                   "template generator. Set LOCAL_LLM=true for a free "
+                                   "local model, or add a provider API key.")
+    elif prov[0] == "local":
+        mode = "local" if local["reachable"] else "local_unreachable"
+        detail = local["detail"]
+    else:
+        mode, detail = "cloud", f"{prov[0]} API key configured"
+    return {"mode": mode, "provider": prov[0] if prov else None,
+            "live": mode in ("local", "cloud"), "detail": detail, "local": local}
+
+
 @router.get("/ai/prompts")
 def prompts():
     return llm_core.list_prompts()

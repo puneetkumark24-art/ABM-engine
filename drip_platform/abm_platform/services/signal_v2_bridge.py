@@ -18,6 +18,7 @@ Safety model carried over unchanged from the original:
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -40,9 +41,53 @@ def _connect_signal_db(path: str | Path) -> sqlite3.Connection:
     return con
 
 
-def build_account_map(db: Session) -> dict:
-    """Resolve each signal_engine catalog bank (11 banks, stable string ids
-    like 'snb', 'al_rajhi') to a drip_platform organizations.id (UUID).
+def _runtime_accounts(signal_db_path: str | Path | None) -> list[dict]:
+    """Accounts that exist in the signal database but not in the static catalog.
+
+    `Pipeline.add_account()` lets an operator (or a collector) register a bank
+    at run time, and capture/attribution/scoring/quality all handle those
+    signals correctly. Only this map knew nothing about them -- it iterated
+    `se_catalog.ACCOUNTS` alone -- so every such signal was captured, scored,
+    quality-gated and then silently dropped at the CRM boundary with a skip
+    reason blaming a "name mismatch", which sends you looking at the wrong
+    thing entirely. Reading the signal DB's own accounts table closes that.
+    """
+    if not signal_db_path:
+        return []
+    path = Path(signal_db_path)
+    if not path.exists():
+        return []
+    out: list[dict] = []
+    try:
+        with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True)) as con:
+            con.row_factory = sqlite3.Row
+            cols = {r["name"] for r in con.execute("PRAGMA table_info(accounts)")}
+            if not cols:
+                return []
+            for r in con.execute("SELECT * FROM accounts"):
+                aliases = []
+                raw = r["aliases"] if "aliases" in cols else None
+                if raw:
+                    try:
+                        parsed = json.loads(raw)
+                        aliases = parsed if isinstance(parsed, list) else []
+                    except (ValueError, TypeError):
+                        aliases = [a.strip() for a in str(raw).split(",") if a.strip()]
+                name = r["canonical_name"] if "canonical_name" in cols else None
+                if not name:
+                    continue
+                out.append({"id": r["id"], "name": name, "aliases": aliases})
+    except sqlite3.Error:
+        return []
+    return out
+
+
+def build_account_map(db: Session, signal_db_path: str | Path | None = None) -> dict:
+    """Resolve each signal_engine bank to a drip_platform organizations.id (UUID).
+
+    Covers both the static catalog (11 banks, stable ids like 'snb',
+    'al_rajhi') and — when `signal_db_path` is given — any account registered
+    at run time in the signal database itself.
 
     Matching is by exact/alias name against models.Organization.name --
     deliberately NOT a hardcoded UUID list, since those UUIDs are only known
@@ -66,7 +111,11 @@ def build_account_map(db: Session) -> dict:
                 org_by_norm.setdefault(cand.strip().lower(), o.id)
 
     matched, unmatched, excluded = {}, [], []
-    for acct in se_catalog.ACCOUNTS:
+    # Catalog first, then runtime accounts the catalog does not already cover.
+    known = {a["id"] for a in se_catalog.ACCOUNTS}
+    all_accounts = list(se_catalog.ACCOUNTS) + [
+        a for a in _runtime_accounts(signal_db_path) if a["id"] not in known]
+    for acct in all_accounts:
         se_id = acct["id"]
         candidates = [acct["name"]] + acct.get("aliases", [])
         if any(c.strip().lower() in EXCLUDED_ACCOUNT_NAMES for c in candidates):
@@ -116,7 +165,9 @@ def preview(db: Session, signal_db_path: str | Path) -> list[dict]:
     """
     # Preview must remain a true read: schema creation belongs to migration/apply.
     exported = _already_exported(db) if inspect(db.bind).has_table("signal_v2_exports") else set()
-    acct_map = build_account_map(db)
+    # Same map the export will use -- including runtime accounts -- so preview
+    # cannot promise a row that export then silently skips.
+    acct_map = build_account_map(db, signal_db_path)
     out = []
     with closing(_connect_signal_db(signal_db_path)) as con:
         rows = con.execute("""
@@ -142,7 +193,9 @@ def preview(db: Session, signal_db_path: str | Path) -> list[dict]:
             if row["se_account_id"] not in acct_map["matched"]:
                 row["_export_blocked_reason"] = (
                     "excluded (Decimal Technologies)" if row["se_account_id"] in acct_map["excluded"]
-                    else "no reconciled organizations.id -- run build_account_map() and fix the name mismatch first"
+                    else ("this signal_engine account is not linked to any organization -- "
+                                    "create an organization whose name or alias matches the "
+                                    "account's canonical name, then re-run the export")
                 )
             out.append(row)
     return out
@@ -152,7 +205,7 @@ def export_scoring_eligible(db: Session, signal_db_path: str | Path) -> dict:
     """Apply: writes eligible, mapped rows into models.Signal + the export
     ledger. Anything without a resolved org_id is skipped, not guessed."""
     ensure_export_table(db)
-    acct_map = build_account_map(db)
+    acct_map = build_account_map(db, signal_db_path)
     candidates = preview(db, signal_db_path)
     exported, skipped = [], []
 

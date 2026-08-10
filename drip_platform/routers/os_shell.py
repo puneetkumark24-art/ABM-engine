@@ -1320,12 +1320,26 @@ SCREENS.workflow=async el=>{
 
 SCREENS.ai=async el=>{
  el.innerHTML=`<h2>AI Center</h2><div class="sub">Prompt registry, versioning, cost tracking.</div>
- <div class="grid g2"><div class="card"><h3>Prompt registry</h3><div id="aip">—</div></div>
+ <div class="card" id="aistat">checking whether an AI is actually connected…</div>
+ <div class="grid g2" style="margin-top:12px"><div class="card"><h3>Prompt registry</h3><div id="aip">—</div></div>
  <div class="card"><h3>Analytics</h3><div id="aia">—</div></div></div>
  <div class="card" style="margin-top:14px"><h3>Test console</h3>
  <label>Prompt</label><select id="aisel"></select>
  <label>Variables (JSON)</label><textarea id="aivars" rows="2">{"role":"CTO","segment":"tier1","signal":"core banking RFP","angle":"onboarding"}</textarea>
  <button class="act" onclick="aiTest()">Call</button><pre id="aires">—</pre></div>`;
+ // Show what is REALLY answering before anything else. Until this existed the
+ // only signal was "Dry-run" buried in an analytics tile, so a broken or
+ // absent model looked identical to a working one.
+ const s=await api('GET','/ai/status');
+ if(s.ok){const d=s.data;
+  const badge=d.mode==='local'?'<span class="badge b-green">LOCAL MODEL LIVE</span>'
+   :d.mode==='cloud'?'<span class="badge b-green">CLOUD MODEL LIVE</span>'
+   :d.mode==='local_unreachable'?'<span class="badge" style="background:var(--red)">LOCAL MODEL NOT RUNNING</span>'
+   :'<span class="badge b-gold">DRY-RUN — no AI connected</span>';
+  const help=d.live?'':`<div class="muted" style="margin-top:8px">Free local option: install <b>Ollama</b>, run <code>ollama pull qwen2.5:7b</code>, then set <code>LOCAL_LLM=true</code> in your .env and restart. Drafts keep working either way — they just use templates instead of a model.</div>`;
+  document.getElementById('aistat').innerHTML=`<h3 style="margin:0 0 6px">AI connection</h3>${badge}
+   <div style="margin-top:6px">${esc(d.detail||'')}</div>
+   ${d.local&&d.local.models_available&&d.local.models_available.length?`<div class="muted" style="margin-top:6px">Models pulled locally: ${d.local.models_available.map(esc).join(', ')}</div>`:''}${help}`;}
  const p=await api('GET','/ai/prompts');
  if(p.ok){document.getElementById('aip').innerHTML=Object.entries(p.data).map(([n,vs])=>
   `<div style="margin:5px 0">${n} ${vs.map(v=>`<span class="badge ${v.active?'b-gold':'b-dim'}">v${v.version}</span>`).join(' ')}</div>`).join('');

@@ -80,6 +80,22 @@ def list_prompts() -> dict:
                    for v in versions] for name, versions in _REGISTRY.items()}
 
 
+_PLACEHOLDER_RE = __import__("re").compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
+
+
+def unrendered_placeholders(text: str) -> list[str]:
+    """Variables still sitting in a prompt after substitution.
+
+    A caller that misspells a variable, or a prompt edited to use a new one
+    without updating its caller, previously sent the model a literal
+    "{{signal}}" and the model happily wrote around it. Nothing caught that:
+    ai_gen's QC gate inspects the OUTPUT for placeholders, so a mangled INPUT
+    produced plausible-looking but uninformed copy with no error anywhere.
+    Cheap to detect, so detect it.
+    """
+    return sorted(set(_PLACEHOLDER_RE.findall(text or "")))
+
+
 def render_prompt(name: str, variables: dict, version: int | None = None) -> tuple[str, int]:
     p = get_prompt(name, version)
     if p is None:
@@ -117,7 +133,8 @@ register_prompt(
 # ── provider adapters ────────────────────────────────────────
 _PRICES = {  # USD per 1M tokens (input, output) — coarse estimates for tracking
     "qwen-turbo": (0.05, 0.2), "qwen-plus": (0.4, 1.2), "qwen-max": (1.6, 6.4),
-    "anthropic": (3.0, 15.0), "openai": (2.5, 10.0), "gemini": (1.25, 5.0)}
+    "anthropic": (3.0, 15.0), "openai": (2.5, 10.0), "gemini": (1.25, 5.0),
+    "local": (0.0, 0.0)}   # runs on your own hardware — genuinely free
 
 # Qwen model routing by tier (A/B/C/D) — used by ai_orchestrator.py, kept
 # here alongside _PRICES since both are "which Qwen model for this call"
@@ -130,13 +147,85 @@ QWEN_MODEL_FOR_TIER = {
 }
 
 
+# ── local model (Ollama / any OpenAI-compatible server) ──────
+# Free, offline, and nothing leaves the machine — which matters here, because
+# the prompts carry Saudi bank contact data. Opt-in exactly like every other
+# provider: set LOCAL_LLM=true. There is no API key, so the "key" slot carries
+# the base URL instead; _call_local ignores it and reads the env directly.
+LOCAL_ENV_FLAG = "LOCAL_LLM"                       # must be "true"
+LOCAL_BASE_URL = "LOCAL_LLM_BASE_URL"              # default: Ollama's own port
+LOCAL_MODEL = "LOCAL_LLM_MODEL"                    # e.g. qwen2.5:7b, llama3.1:8b
+_LOCAL_DEFAULT_URL = "http://127.0.0.1:11434/v1"
+_LOCAL_DEFAULT_MODEL = "qwen2.5:7b"
+
+
+def local_llm_status(timeout: int = 3) -> dict:
+    """Is a local model actually reachable right now?
+
+    Deliberately a real request, not a config check: "LOCAL_LLM=true is set"
+    and "a model will answer" are different claims, and the dashboard must not
+    report the second when it only knows the first. Cheap enough to call from
+    a status endpoint.
+    """
+    base = os.environ.get(LOCAL_BASE_URL, _LOCAL_DEFAULT_URL).rstrip("/")
+    model = os.environ.get(LOCAL_MODEL, _LOCAL_DEFAULT_MODEL)
+    enabled = os.environ.get(LOCAL_ENV_FLAG, "").lower() == "true"
+    out = {"enabled": enabled, "base_url": base, "model": model,
+           "reachable": False, "models_available": [], "detail": ""}
+    if not enabled:
+        out["detail"] = f"{LOCAL_ENV_FLAG} is not set to true — staying in dry-run"
+        return out
+    try:
+        req = urllib.request.Request(f"{base}/models", headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        names = [m.get("id") for m in data.get("data", []) if m.get("id")]
+        out["reachable"] = True
+        out["models_available"] = names
+        if names and model not in names:
+            out["detail"] = (f"server is up but '{model}' is not pulled; "
+                             f"available: {', '.join(names[:6])}")
+        else:
+            out["detail"] = "local model ready"
+    except Exception as e:  # noqa: BLE001
+        out["detail"] = (f"no local model server at {base} "
+                         f"({type(e).__name__}) — install Ollama and run "
+                         f"`ollama pull {model}`")
+    return out
+
+
+def _call_local(_key: str, system: str, user: str) -> tuple[str, int, int, str]:
+    """Ollama exposes an OpenAI-compatible /v1/chat/completions, so this is the
+    same shape as _call_openai — minus the key, which local servers ignore."""
+    base = os.environ.get(LOCAL_BASE_URL, _LOCAL_DEFAULT_URL).rstrip("/")
+    model = os.environ.get(LOCAL_MODEL, _LOCAL_DEFAULT_MODEL)
+    out = _post(f"{base}/chat/completions",
+                {"Content-Type": "application/json",
+                 "Authorization": "Bearer local"},   # ignored locally, some proxies want it
+                {"model": model, "max_tokens": 900,
+                 "messages": [{"role": "system", "content": system or "You are a helpful assistant."},
+                              {"role": "user", "content": user}]},
+                # A 7B model on CPU is slow; 45s is not enough and a premature
+                # timeout would look like "the local model is broken".
+                timeout=int(os.environ.get("LOCAL_LLM_TIMEOUT", "180")))
+    text = out["choices"][0]["message"]["content"]
+    usage = out.get("usage") or {}
+    return (text, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), model)
+
+
 def active_provider() -> tuple[str, str] | None:
-    """(provider, key) for the first configured provider, else None. Qwen is
-    checked FIRST — per the platform's explicit direction ("we are NOT
-    running models locally... USE QWEN API" — Phase 4 of the AI Intelligence
-    Layer architecture brief), Qwen is the intended primary provider;
-    Anthropic/OpenAI/Gemini remain as fallback options this module already
-    supported, not the default choice going forward."""
+    """(provider, key) for the first configured provider, else None.
+
+    Local is checked FIRST when explicitly enabled: it is free, it runs
+    offline, and no bank contact data leaves the machine. It is strictly
+    opt-in (LOCAL_LLM=true) so that merely having Ollama installed never
+    silently redirects calls away from a configured cloud provider.
+
+    Cloud order after that is unchanged: Qwen was the platform's designated
+    primary, with Anthropic/OpenAI/Gemini as the pre-existing fallbacks.
+    """
+    if os.environ.get(LOCAL_ENV_FLAG, "").lower() == "true":
+        return "local", os.environ.get(LOCAL_BASE_URL, _LOCAL_DEFAULT_URL)
     for prov, env in (("qwen", "QWEN_API_KEY"),
                       ("anthropic", "ANTHROPIC_API_KEY"),
                       ("openai", "OPENAI_API_KEY"),
@@ -205,7 +294,8 @@ def _call_qwen(key: str, system: str, user: str) -> tuple[str, int, int, str]:
     return text, u.get("prompt_tokens", 0), u.get("completion_tokens", 0), model
 
 
-_ADAPTERS = {"qwen": _call_qwen, "anthropic": _call_anthropic, "openai": _call_openai, "gemini": _call_gemini}
+_ADAPTERS = {"local": _call_local, "qwen": _call_qwen, "anthropic": _call_anthropic,
+             "openai": _call_openai, "gemini": _call_gemini}
 
 # test hook: inject a fake provider without keys
 _TEST_PROVIDER = None
@@ -233,6 +323,19 @@ def call_llm(db: Session, prompt_name: str, variables: dict,
     concurrent requests can interleave, and should move to a proper
     per-call parameter threaded through _call_qwen instead."""
     user, pv = render_prompt(prompt_name, variables, version)
+    # Refuse to send a half-rendered prompt. Better a loud, logged failure than
+    # confident copy written around a literal "{{signal}}" that nobody notices.
+    missing = unrendered_placeholders(user)
+    if missing:
+        row = ml.LlmCall(provider="skipped", model=None, prompt_name=prompt_name,
+                         prompt_version=pv, purpose=purpose, tokens_in=0, tokens_out=0,
+                         cost_usd=0.0, latency_ms=0, status="error",
+                         error=f"unrendered prompt variables: {', '.join(missing)}")
+        db.add(row); db.commit()
+        return {"text": f"[PROMPT ERROR] missing variables: {', '.join(missing)}",
+                "live": False, "provider": "skipped", "model": None,
+                "prompt_version": pv, "call_id": row.id, "cost_usd": 0.0,
+                "missing_variables": missing}
     t0 = time.perf_counter()
     prov = active_provider()
 
