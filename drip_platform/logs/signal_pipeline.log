@@ -10779,4 +10779,2210 @@ RUN START 10-08-2026 18:23:06.49
 RUN START 10-08-2026 20:23:03.36 
 ==================================================================== 
 [-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
+^C 
+==================================================================== 
+RUN START 11-08-2026 11:16:33.31 
+==================================================================== 
+[-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
+ 
+==================================================================== 
+RUN START 11-08-2026 12:23:03.81 
+==================================================================== 
+[-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
+^C 
+==================================================================== 
+RUN START 11-08-2026 15:38:18.85 
+==================================================================== 
+[-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
+ 
+==================================================================== 
+RUN START 11-08-2026 17:57:39.08 
+==================================================================== 
+[-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
+ 
+==================================================================== 
+RUN START 11-08-2026 18:23:03.86 
+==================================================================== 
+[-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
+{
+  "synced_beyond_static_catalog": 0,
+  "synced_accounts": [],
+  "newly_added_this_run": 0,
+  "already_present_refreshed": 0,
+  "skipped_already_in_catalog": 6,
+  "skipped_excluded": 0,
+  "skipped_no_website_domain": [
+    "BSF (Banque Saudi Fransi)",
+    "EJADA",
+    "SNB (Saudi National Bank)",
+    "ITQAN",
+    "Tarabut",
+    "Geidea",
+    "ITC Infotech",
+    "Backbase",
+    "KPMG",
+    "Mastercard",
+    "EMKAN"
+  ]
+}
+[0a/6] watch-seed-official (homepage watch for every account) 
+{
+  "official_watches": 11
+}
+[0b/6] watch-import (refresh from config\verified_watch_targets.csv) 
+{
+  "accepted": 22,
+  "rejected": 0,
+  "errors": []
+}
+[1/6] watch-check-all 
+{
+  "checked": 33,
+  "results": [
+    {
+      "id": "albilad-careers",
+      "ok": true,
+      "target": "albilad-careers",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "c94f0b5c28a54e77fbed7a386eeff1987fa85df119511cb73d8f3a889691683e"
+    },
+    {
+      "id": "albilad-news",
+      "ok": true,
+      "target": "albilad-news",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "49544b6b8f8bf768fb73ea4883eb972ab98af1f6acc56b1ef6c97ba203b05671"
+    },
+    {
+      "id": "albilad-vendors",
+      "ok": true,
+      "target": "albilad-vendors",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "6ff4430edca0f137cfe2d6c915991ff94f50e8bc76ce49f4a7a65e0423dfc06a"
+    },
+    {
+      "id": "alinma-careers",
+      "ok": false,
+      "error": "page produced no stable visible text"
+    },
+    {
+      "id": "alinma-news",
+      "ok": true,
+      "target": "alinma-news",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "16b32103a69281d44dbcade1ba330650d790889d7bfb9a7a600fb661cb9ed7c8"
+    },
+    {
+      "id": "alinma-vendors",
+      "ok": true,
+      "target": "alinma-vendors",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "996a3fa58d4300c2fc1dd3c7a6d3e1fb9e7f7617f17d4f8f2ba211a8238bd7f2"
+    },
+    {
+      "id": "anb-careers",
+      "ok": false,
+      "error": "<urlopen error [WinError 10060] A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond>"
+    },
+    {
+      "id": "anb-news",
+      "ok": true,
+      "target": "anb-news",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "d699e49a9ca7ddc100c4d5ed4501e8c4700ba00397b4b7d999fc3fec1d1aea77"
+    },
+    {
+      "id": "baj-careers",
+      "ok": true,
+      "target": "baj-careers",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "76420b4c008128bbccc4eb47ac7e81ed5eef7163c3037dbec00b73e75d5b2c3b"
+    },
+    {
+      "id": "bsf-careers",
+      "ok": true,
+      "target": "bsf-careers",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "2b7d377ba064670bcfae2a00663209741ab1eecc27cd8331ebf1f7e766bb690f"
+    },
+    {
+      "id": "bsf-news",
+      "ok": true,
+      "target": "bsf-news",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "46e1bef06fc125b0d363773a9cf6efd2b0d7dc491fb8ef9395cf26d9b7055654"
+    },
+    {
+      "id": "official-al_rajhi",
+      "ok": true,
+      "target": "official-al_rajhi",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "6d3b22700d8e79cdeb4ea57d4fb47dac836f194f998bbebe80c1a2086ae18fda"
+    },
+    {
+      "id": "official-albilad",
+      "ok": true,
+      "target": "official-albilad",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "431dda74a19d2d483569f1c1e30a7c5385fe2fa1c895f6a028b8d0c38c8d8d51"
+    },
+    {
+      "id": "official-alinma",
+      "ok": true,
+      "target": "official-alinma",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "1debebedc8727cdafacbd8f4b83cf221870cf671ad5c9a4685f467a5bb685be1"
+    },
+    {
+      "id": "official-anb",
+      "ok": true,
+      "target": "official-anb",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "430d193345536c2e34b955c40d30bc9b20c608a3d4ecb132e4a157f97627a730"
+    },
+    {
+      "id": "official-baj",
+      "ok": true,
+      "target": "official-baj",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "1fa1053f053292895552be54a994fd984f2079801283bbcaf5972ce715465e1c"
+    },
+    {
+      "id": "official-bsf",
+      "ok": true,
+      "target": "official-bsf",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "8dfb0159fd208aa64b4ca58dc7761cec1baa160a4b1b4099f41e635db6eedbe2"
+    },
+    {
+      "id": "official-d360",
+      "ok": false,
+      "error": "HTTP Error 522: <none>"
+    },
+    {
+      "id": "official-riyad",
+      "ok": true,
+      "target": "official-riyad",
+      "first_capture": true,
+      "changed": false,
+      "content_hash": "9c4c0d9732224c0f29b4791f36b46f1ef9bcf203f133cfdf8fa5ac06c05be332"
+    },
+    {
+      "id": "official-sab",
+      "ok": true,
+      "target": "official-sab",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "79196681e249c43ca03633272b66b48eb553f18bb8e97c7d0ea507e2aad87c7d"
+    },
+    {
+      "id": "official-snb",
+      "ok": false,
+      "error": "<urlopen error [SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] sslv3 alert handshake failure (_ssl.c:1081)>"
+    },
+    {
+      "id": "official-stc_bank",
+      "ok": true,
+      "target": "official-stc_bank",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "a3fb027be3e07d3e6aca7478b212ebe6aca28305cd2b5a8262b3e3427735e858"
+    },
+    {
+      "id": "rajhi-careers",
+      "ok": true,
+      "target": "rajhi-careers",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "fa1850c7e0f9e564be670c75a63428a15f8db694bbe78169cf07cec0b78050e4"
+    },
+    {
+      "id": "rajhi-jobs",
+      "ok": true,
+      "target": "rajhi-jobs",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "50eb8fee33159f5e8eaca65939f6b83657a59df9cc1644e4d9fb3e6ae7c2b350"
+    },
+    {
+      "id": "rajhi-vendors",
+      "ok": true,
+      "target": "rajhi-vendors",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "f2cbdb2533207def57fd15960272b069de7da3b728f6d837e83414a9705d9328"
+    },
+    {
+      "id": "riyad-careers",
+      "ok": true,
+      "target": "riyad-careers",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "7dfc941a8af6f94dc1636d725ddced749c85fdd0ae6737c21b85b4dd9c052616"
+    },
+    {
+      "id": "riyad-jobs",
+      "ok": true,
+      "target": "riyad-jobs",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "1f65ad917878d4c27c040c4c25bf8d1eda7ac4bcd5d9666d7c3675107d8cf4ff"
+    },
+    {
+      "id": "riyad-suppliers",
+      "ok": true,
+      "target": "riyad-suppliers",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "8b14046dfb12a9324b6145cc12a12056b024b8af1c2637ae5d4cb104450b158d"
+    },
+    {
+      "id": "sab-careers",
+      "ok": true,
+      "target": "sab-careers",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "ffd4ba8da8c40cec3c40597a28df352ef6f38a69a4bdd19ccb536242585ed231"
+    },
+    {
+      "id": "sab-newsroom",
+      "ok": true,
+      "target": "sab-newsroom",
+      "first_capture": false,
+      "changed": false,
+      "content_hash": "e6161b9010de3cd59f34b865b7d63391fa8b37658eeb0c7f93b15e1071716833"
+    },
+    {
+      "id": "snb-careers",
+      "ok": false,
+      "error": "<urlopen error [SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] sslv3 alert handshake failure (_ssl.c:1081)>"
+    },
+    {
+      "id": "snb-newsroom",
+      "ok": false,
+      "error": "<urlopen error [SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] sslv3 alert handshake failure (_ssl.c:1081)>"
+    },
+    {
+      "id": "stc-careers",
+      "ok": true,
+      "target": "stc-careers",
+      "first_capture": false,
+      "changed": true,
+      "content_hash": "ce1a3ff9e7f58c6552338825bca86baf12ef61124fcde03048aab9753a8680da"
+    }
+  ]
+}
+[2/6] collect-live 
+{
+  "shadow_mode": true,
+  "results": [
+    {
+      "source": "gnews_banking_ar",
+      "name": "Google News - Saudi Banking Arabic",
+      "ok": true,
+      "fetched": 44,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 33,
+      "review": 0,
+      "market": 5,
+      "rejected": 6
+    },
+    {
+      "source": "gnews_digital_lending",
+      "name": "Google News - KSA Digital Lending",
+      "ok": true,
+      "fetched": 9,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 4,
+      "review": 0,
+      "market": 4,
+      "rejected": 1
+    },
+    {
+      "source": "gnews_ksa_fintech",
+      "name": "Google News - KSA Fintech",
+      "ok": true,
+      "fetched": 70,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 51,
+      "review": 0,
+      "market": 10,
+      "rejected": 9
+    },
+    {
+      "source": "gnews_sama",
+      "name": "Google News - SAMA Regulations",
+      "ok": true,
+      "fetched": 46,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 36,
+      "review": 0,
+      "market": 10,
+      "rejected": 0
+    },
+    {
+      "source": "gnews_saudi_banking",
+      "name": "Google News - Saudi Banking",
+      "ok": true,
+      "fetched": 96,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 84,
+      "review": 0,
+      "market": 1,
+      "rejected": 11
+    },
+    {
+      "source": "gnews_target_banks",
+      "name": "Google News - Target Banks",
+      "ok": true,
+      "fetched": 62,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 46,
+      "review": 1,
+      "market": 0,
+      "rejected": 15
+    },
+    {
+      "source": "official_sama_news",
+      "name": "Official SAMA News",
+      "ok": true,
+      "fetched": 100,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 85,
+      "review": 0,
+      "market": 15,
+      "rejected": 0
+    },
+    {
+      "source": "official_saudi_exchange",
+      "name": "Official Saudi Exchange Announcements",
+      "ok": true,
+      "fetched": 49,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 23,
+      "review": 0,
+      "market": 2,
+      "rejected": 24
+    },
+    {
+      "source": "official_target_banks",
+      "name": "Official Target Bank Domains",
+      "ok": true,
+      "fetched": 94,
+      "accepted": 0,
+      "corroborating": 0,
+      "duplicates": 37,
+      "review": 0,
+      "market": 0,
+      "rejected": 57
+    }
+  ],
+  "status": {
+    "accounts": 11,
+    "sources": 10,
+    "observations": 886,
+    "promoted_signals": 5,
+    "open_reviews": 5,
+    "scoring_eligible": 3,
+    "action_eligible": 0,
+    "market_intelligence": 248,
+    "corroborating_evidence": 2
+  }
+}
+[3/6] capture-audit 
+{
+  "capture_360_ready": false,
+  "readiness_threshold": 0.9,
+  "required_coverage_ratio": 0.4015151515151515,
+  "open_gaps": 79,
+  "required_total": 132,
+  "by_channel": [
+    {
+      "channel": "public_news",
+      "covered_accounts": 11,
+      "required_accounts": 11,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "regulator",
+      "covered_accounts": 11,
+      "required_accounts": 11,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "exchange",
+      "covered_accounts": 11,
+      "required_accounts": 11,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "official_site",
+      "covered_accounts": 9,
+      "required_accounts": 11,
+      "coverage_ratio": 0.8181818181818182
+    },
+    {
+      "channel": "careers",
+      "covered_accounts": 7,
+      "required_accounts": 11,
+      "coverage_ratio": 0.6363636363636364
+    },
+    {
+      "channel": "procurement",
+      "covered_accounts": 4,
+      "required_accounts": 11,
+      "coverage_ratio": 0.36363636363636365
+    },
+    {
+      "channel": "linkedin_company",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "linkedin_people",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "linkedin_jobs",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "crm",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "email_engagement",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "website_intent",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "app_releases",
+      "covered_accounts": 0,
+      "required_accounts": 0,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "social_other",
+      "covered_accounts": 0,
+      "required_accounts": 0,
+      "coverage_ratio": 1.0
+    }
+  ]
+}
+[4/6] quality-backfill 
+{
+  "assessed": 0,
+  "total_quality_rows": 886
+}
+[5/6] quality-audit 
+{
+  "quality_gate_ready": false,
+  "assessed_observations": 886,
+  "average_completeness": 0.5460496613995486,
+  "average_materiality": 0.41709932279909706,
+  "incomplete_reviews": 16,
+  "contested_signals": 0,
+  "claim_relations": 0,
+  "independent_source_families": 2,
+  "feedback_matrix": [],
+  "reviewed_calibration_sample": 0,
+  "human_agreement_rate": 0.0,
+  "minimum_calibration_sample": 100,
+  "minimum_agreement_rate": 0.9
+}
+[6/6] capture-coverage 
+{
+  "capture_360_ready": false,
+  "readiness_threshold": 0.9,
+  "required_coverage_ratio": 0.4015151515151515,
+  "required_covered": 53,
+  "required_total": 132,
+  "by_channel": [
+    {
+      "channel": "public_news",
+      "covered_accounts": 11,
+      "required_accounts": 11,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "regulator",
+      "covered_accounts": 11,
+      "required_accounts": 11,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "exchange",
+      "covered_accounts": 11,
+      "required_accounts": 11,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "official_site",
+      "covered_accounts": 9,
+      "required_accounts": 11,
+      "coverage_ratio": 0.8181818181818182
+    },
+    {
+      "channel": "careers",
+      "covered_accounts": 7,
+      "required_accounts": 11,
+      "coverage_ratio": 0.6363636363636364
+    },
+    {
+      "channel": "procurement",
+      "covered_accounts": 4,
+      "required_accounts": 11,
+      "coverage_ratio": 0.36363636363636365
+    },
+    {
+      "channel": "linkedin_company",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "linkedin_people",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "linkedin_jobs",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "crm",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "email_engagement",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "website_intent",
+      "covered_accounts": 0,
+      "required_accounts": 11,
+      "coverage_ratio": 0.0
+    },
+    {
+      "channel": "app_releases",
+      "covered_accounts": 0,
+      "required_accounts": 0,
+      "coverage_ratio": 1.0
+    },
+    {
+      "channel": "social_other",
+      "covered_accounts": 0,
+      "required_accounts": 0,
+      "coverage_ratio": 1.0
+    }
+  ],
+  "channels": [
+    {
+      "id": "app_releases",
+      "mode": "poll",
+      "cadence_minutes": 1440,
+      "required": 0,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "careers",
+      "mode": "change",
+      "cadence_minutes": 720,
+      "required": 1,
+      "configured": 1,
+      "enabled": 1,
+      "last_success_at": "2026-08-11T12:54:39+00:00",
+      "last_event_at": "2026-08-11T12:54:38+00:00",
+      "last_error": null,
+      "events_total": 7
+    },
+    {
+      "id": "crm",
+      "mode": "webhook_or_import",
+      "cadence_minutes": 60,
+      "required": 1,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "email_engagement",
+      "mode": "signed_webhook_or_import",
+      "cadence_minutes": 15,
+      "required": 1,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "exchange",
+      "mode": "poll",
+      "cadence_minutes": 180,
+      "required": 1,
+      "configured": 1,
+      "enabled": 1,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "linkedin_company",
+      "mode": "api_or_import",
+      "cadence_minutes": 360,
+      "required": 1,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "linkedin_jobs",
+      "mode": "provider_or_import",
+      "cadence_minutes": 720,
+      "required": 1,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "linkedin_people",
+      "mode": "provider_or_import",
+      "cadence_minutes": 720,
+      "required": 1,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "official_site",
+      "mode": "change",
+      "cadence_minutes": 360,
+      "required": 1,
+      "configured": 1,
+      "enabled": 1,
+      "last_success_at": "2026-08-11T12:54:52+00:00",
+      "last_event_at": "2026-08-11T12:54:38+00:00",
+      "last_error": null,
+      "events_total": 16
+    },
+    {
+      "id": "procurement",
+      "mode": "poll",
+      "cadence_minutes": 360,
+      "required": 1,
+      "configured": 1,
+      "enabled": 1,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "last_event_at": "2026-08-02T16:54:28+00:00",
+      "last_error": null,
+      "events_total": 4
+    },
+    {
+      "id": "public_news",
+      "mode": "poll",
+      "cadence_minutes": 240,
+      "required": 1,
+      "configured": 1,
+      "enabled": 1,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "regulator",
+      "mode": "poll",
+      "cadence_minutes": 360,
+      "required": 1,
+      "configured": 1,
+      "enabled": 1,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "social_other",
+      "mode": "api_or_import",
+      "cadence_minutes": 720,
+      "required": 0,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    },
+    {
+      "id": "website_intent",
+      "mode": "webhook_or_import",
+      "cadence_minutes": 15,
+      "required": 1,
+      "configured": 0,
+      "enabled": 0,
+      "last_success_at": null,
+      "last_event_at": null,
+      "last_error": null,
+      "events_total": 0
+    }
+  ],
+  "matrix": [
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "al_rajhi",
+      "account": "Al Rajhi Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "alinma",
+      "account": "Alinma Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "anb",
+      "account": "Arab National Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "baj",
+      "account": "Bank AlJazira",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "procurement",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "albilad",
+      "account": "Bank Albilad",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "bsf",
+      "account": "Banque Saudi Fransi",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "d360",
+      "account": "D360 Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "riyad",
+      "account": "Riyad Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:39+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "stc_bank",
+      "account": "STC Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:38+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "sab",
+      "account": "Saudi Awwal Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "app_releases",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "careers",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "crm",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "email_engagement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "exchange",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:50+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "linkedin_company",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "linkedin_jobs",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "linkedin_people",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "official_site",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "procurement",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "stale_or_never_run"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "public_news",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:48+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "regulator",
+      "required": true,
+      "covered": true,
+      "last_success_at": "2026-08-11T12:54:49+00:00",
+      "gap": null
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "social_other",
+      "required": false,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    },
+    {
+      "account_id": "snb",
+      "account": "Saudi National Bank",
+      "channel": "website_intent",
+      "required": true,
+      "covered": false,
+      "last_success_at": null,
+      "gap": "not_configured"
+    }
+  ]
+}
+RUN END 11-08-2026 18:25:03.10 
+ 
+==================================================================== 
+RUN START 11-08-2026 20:23:03.65 
+==================================================================== 
+[-1/6] catalog-sync (Postgres organizations -> signal_engine accounts) 
 ^C
