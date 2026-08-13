@@ -70,6 +70,8 @@ os.environ.setdefault("_ORIGINAL_DATABASE_URL", os.environ.get("DATABASE_URL", "
 # still depends on that file's own imports -- unchanged, and not the CI path.)
 import sys  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 import models  # noqa: E402,F401
 import models_ai, models_audit, models_collectors, models_crm2  # noqa: E402,F401
 import models_ext, models_final, models_intel, models_jobs  # noqa: E402,F401

@@ -111,7 +111,17 @@ def run():
     # ══ Marketing: scheduling honored by tick ══
     aud = marketing.create_audience(db, "sched list")
     marketing.add_members(db, aud.id, [p1.id])
-    camp = marketing.create_campaign(db, "sched camp", aud.id, "Subj", "Body {name|there}")
+    # schedule_campaign now runs the full live-delivery preflight AND requires
+    # approval -- a campaign that could not lawfully send must not be schedulable.
+    # The body therefore needs a real unsubscribe link, and the campaign has to
+    # be approved first. This is a deliberate tightening from the campaign-
+    # operations phase, not a test workaround: the previous check was only
+    # "audience not empty".
+    camp = marketing.create_campaign(
+        db, "sched camp", aud.id, "Subj",
+        'Body {name|there} <a href="https://drip.example.com/p/prefs">unsubscribe</a>')
+    camp.approval_status = "approved"
+    db.commit()
     marketing_ext.schedule_campaign(db, camp.id, at=now - timedelta(minutes=1))
     res = marketing_ext.run_scheduled(db, respect_send_window=False)
     check("MKT scheduled campaign fires on tick", res["fired"] == 1)

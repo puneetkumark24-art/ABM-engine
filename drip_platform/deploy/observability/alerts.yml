@@ -56,3 +56,19 @@ groups:
         annotations:
           summary: "Outbound webhook dead-letters rising"
           runbook: "docs/runbooks/operations.md#webhook-dead-letters"
+
+      - alert: DripSesReceiptQueueBacklog
+        expr: aws_sqs_approximate_number_of_messages_visible_average{queue_name=~"drip-.*-ses-events"} > 100
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "SES receipt queue backlog is growing"
+          runbook: "docs/runbooks/ses-operations.md#receipt-backlog"
+
+      - alert: DripSesReceiptDeadLetters
+        expr: aws_sqs_approximate_number_of_messages_visible_average{queue_name=~"drip-.*-ses-events-dlq"} > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "SES receipt messages reached the dead-letter queue"
+          runbook: "docs/runbooks/ses-operations.md#dead-letters"

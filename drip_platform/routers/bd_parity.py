@@ -631,6 +631,39 @@ class CampaignReq(BaseModel):
     body: str                              # merge tags: {first_name} etc.
 
 
+class CampaignSaveReq(BaseModel):
+    changes: dict
+    actor: str = "operator"
+    note: str = "autosave"
+
+
+class BrandReq(BaseModel):
+    name: str
+    logo_url: str | None = None
+    primary_color: str = "#2563eb"
+    accent_color: str = "#d4af37"
+    font_family: str = "Arial, sans-serif"
+    footer_html: str = ""
+    sender_name: str | None = None
+    reply_to: str | None = None
+
+class ApprovalReq(BaseModel):
+    actor: str
+    decision: str
+    note: str = ""
+
+class TemplateReq(BaseModel):
+    name: str
+    subject: str
+    body: str
+    persona_target: str | None = None
+
+class DispatchReq(BaseModel):
+    batch_size: int = 100
+    live: bool = False
+    confirmation: str = ""
+
+
 @mkt.post("/mkt/campaigns", status_code=201)
 def create_campaign(req: CampaignReq, db: Session = Depends(get_db)):
     from abm_platform.services import marketing
@@ -649,9 +682,16 @@ def list_campaigns(db: Session = Depends(get_db)):
             rep = marketing.campaign_report(db, c.id)
         except Exception:  # noqa: BLE001
             rep = {}
+        run = (db.query(mx.CampaignDispatchRun).filter_by(campaign_id=c.id)
+               .order_by(mx.CampaignDispatchRun.created_at.desc()).first())
+        dispatch = None if run is None else {
+            "id": run.id, "status": run.status, "processed": run.processed,
+            "total": run.total, "sent": run.sent, "blocked": run.blocked,
+            "held_for_human": run.held_for_human}
         out.append({"id": c.id, "name": c.name, "subject": c.subject,
-                    "status": c.status, "scheduled_at": str(c.scheduled_at or ""),
-                    "report": rep})
+                    "status": c.status, "approval_status": c.approval_status,
+                    "scheduled_at": str(c.scheduled_at or ""),
+                    "report": rep, "dispatch": dispatch})
     return out
 
 
@@ -667,10 +707,120 @@ def send_campaign(campaign_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail=str(e)[:200])
 
 
+@mkt.post("/mkt/campaigns/{campaign_id}/dispatch", status_code=202)
+def start_campaign_dispatch(campaign_id: str, req: DispatchReq,
+                            db: Session = Depends(get_db)):
+    """Snapshot the audience and enqueue restart-safe dry-run batches."""
+    from abm_platform.services import campaign_dispatch
+    try:
+        if req.live and req.confirmation != "SEND_LIVE":
+            raise ValueError("live dispatch requires confirmation SEND_LIVE")
+        requested = "configured" if req.live else "dry_run"
+        return campaign_dispatch.start(db, campaign_id, req.batch_size, requested)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@mkt.get("/mkt/campaign-dispatch/{run_id}")
+def campaign_dispatch_status(run_id: str, db: Session = Depends(get_db)):
+    from abm_platform.services import campaign_dispatch
+    try:
+        return campaign_dispatch.get(db, run_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@mkt.post("/mkt/campaign-dispatch/{run_id}/cancel")
+def cancel_campaign_dispatch(run_id: str, db: Session = Depends(get_db)):
+    from abm_platform.services import campaign_dispatch
+    try:
+        return campaign_dispatch.cancel(db, run_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @mkt.get("/mkt/campaigns/{campaign_id}/report")
 def campaign_report(campaign_id: str, db: Session = Depends(get_db)):
     from abm_platform.services import marketing
     return marketing.campaign_report(db, campaign_id)
+
+
+@mkt.get("/mkt/campaigns/{campaign_id}/preflight")
+def campaign_preflight(campaign_id: str, db: Session = Depends(get_db)):
+    from abm_platform.services import marketing
+    return marketing.campaign_preflight(db, campaign_id)
+
+
+@mkt.post("/mkt/brands", status_code=201)
+def create_brand(req: BrandReq, db: Session = Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    try: b=ws.create_brand(db, **req.model_dump())
+    except ValueError as exc: raise HTTPException(422, str(exc))
+    return {"id":b.id,"name":b.name}
+
+
+@mkt.get("/mkt/brands")
+def list_brands(db: Session = Depends(get_db)):
+    import models_ext as mx
+    return [{"id":b.id,"name":b.name,"logo_url":b.logo_url,"primary_color":b.primary_color,
+             "accent_color":b.accent_color,"font_family":b.font_family,"footer_html":b.footer_html}
+            for b in db.query(mx.EmailBrandProfile).order_by(mx.EmailBrandProfile.name).all()]
+
+
+@mkt.patch("/mkt/campaigns/{campaign_id}")
+def save_campaign(campaign_id:str, req:CampaignSaveReq, db:Session=Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    try:c=ws.save_campaign(db,campaign_id,req.changes,req.actor,req.note)
+    except ValueError as exc:raise HTTPException(404,str(exc))
+    return {"id":c.id,"version":c.version,"approval_status":c.approval_status}
+
+
+@mkt.post("/mkt/campaigns/{campaign_id}/duplicate",status_code=201)
+def duplicate_campaign(campaign_id:str,name:str|None=None,db:Session=Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    try:c=ws.duplicate(db,campaign_id,name)
+    except ValueError as exc:raise HTTPException(404,str(exc))
+    return {"id":c.id,"name":c.name,"status":c.status}
+
+
+@mkt.get("/mkt/campaigns/{campaign_id}/preview")
+def preview_campaign(campaign_id:str,person_id:str|None=None,db:Session=Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    try:return ws.preview(db,campaign_id,person_id)
+    except ValueError as exc:raise HTTPException(404,str(exc))
+
+
+@mkt.get("/mkt/campaigns/{campaign_id}/revisions")
+def campaign_revisions(campaign_id:str,db:Session=Depends(get_db)):
+    import models_ext as mx
+    return [{"version":r.version,"actor":r.actor,"note":r.note,"created_at":str(r.created_at)}
+            for r in db.query(mx.EmailCampaignRevision).filter_by(campaign_id=campaign_id)
+            .order_by(mx.EmailCampaignRevision.version.desc()).all()]
+
+@mkt.post("/mkt/campaigns/{campaign_id}/approval")
+def campaign_approval(campaign_id:str,req:ApprovalReq,db:Session=Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    try:c=ws.approve(db,campaign_id,req.actor,req.decision,req.note)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+    return {"id":c.id,"approval_status":c.approval_status}
+
+@mkt.post("/mkt/campaigns/{campaign_id}/restore/{version}")
+def restore_campaign(campaign_id:str,version:int,db:Session=Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    try:c=ws.restore(db,campaign_id,version)
+    except ValueError as exc:raise HTTPException(404,str(exc))
+    return {"id":c.id,"version":c.version}
+
+@mkt.post("/mkt/templates",status_code=201)
+def create_email_template(req:TemplateReq,db:Session=Depends(get_db)):
+    from abm_platform.services import campaign_workspace as ws
+    t=ws.create_template(db,**req.model_dump());return {"id":t.id,"name":t.name}
+
+@mkt.get("/mkt/templates")
+def list_email_templates(db:Session=Depends(get_db)):
+    return [{"id":t.id,"name":t.name,"subject":t.subject,"body":t.body,
+             "persona_target":t.persona_target,"updated_at":str(t.updated_at)}
+            for t in db.query(models.Template).filter_by(channel="email",is_active=True).all()]
 
 
 # ── document uploads (dossiers) ──────────────────────────────

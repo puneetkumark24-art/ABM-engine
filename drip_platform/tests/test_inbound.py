@@ -134,11 +134,20 @@ class InboundTests(unittest.TestCase):
 
     def tearDown(self):
         self.db.rollback()
-        for model in (mx.DeliveryEvent, mx.SendRequest, mx.Suppression):
-            self.db.query(model).delete()
-        self.db.query(core_models.Person).delete()
-        self.db.query(core_models.Organization).delete()
-        self.db.commit()
+        # `DELETE FROM persons` fails outright on PostgreSQL if ANY row in a
+        # referencing table still points at a person -- including rows another
+        # suite left behind in the same shared database. Running the
+        # email-lifecycle suite first turned all 18 tests here red with
+        # ForeignKeyViolation (first on drafts, then on touches), while this
+        # suite passed perfectly on a fresh database. SQLite never enforced the
+        # constraint, so it stayed invisible until CI moved to PostgreSQL.
+        #
+        # purge_all() deletes in reverse dependency order derived from the
+        # schema itself, so it does not need updating when a new table gains a
+        # person_id.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from _dbclean import purge_all
+        purge_all(self.db)
         self.db.close()
 
     # ── classification ────────────────────────────────────────

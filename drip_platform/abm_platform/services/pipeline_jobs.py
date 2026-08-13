@@ -46,11 +46,17 @@ def handle_campaign_send(db: Session, payload: dict) -> dict:
     return marketing.send_campaign(db, payload["campaign_id"], transport="dry_run")
 
 
+def handle_campaign_dispatch_batch(db: Session, payload: dict) -> dict:
+    from . import campaign_dispatch
+    return campaign_dispatch.process_batch(db, payload["run_id"])
+
+
 def register_pipeline_handlers() -> None:
     jobs.register("decision", handle_decision)
     jobs.register("engagement_rollup", handle_engagement_rollup)
     jobs.register("enrichment", handle_enrichment)
     jobs.register("campaign_send", handle_campaign_send)
+    jobs.register("campaign_dispatch_batch", handle_campaign_dispatch_batch)
 
 
 # ── schedulers (enqueue on a beat, idempotent) ───────────────

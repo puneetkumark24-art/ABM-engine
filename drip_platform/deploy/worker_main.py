@@ -14,8 +14,16 @@ from abm_platform.services import jobs, orchestrator_async, pipeline_jobs, enric
 
 
 def register_all_handlers():
+    from abm_platform.services import ses_delivery
+    ses_delivery.try_register()
     orchestrator_async.register_handlers()          # sequence_step
-    pipeline_jobs.register_pipeline_handlers()       # decision, engagement_rollup, enrichment, campaign_send
+    # decision, engagement_rollup, enrichment, campaign_send,
+    # campaign_dispatch_batch. campaign_dispatch_batch MUST be registered in
+    # every worker that drains the queue: a durable campaign run enqueues its
+    # batches regardless of which worker picks them up, and an unregistered
+    # kind fails the job, retries, and eventually dead-letters -- which would
+    # look like "the campaign stalled" rather than "this worker is misconfigured".
+    pipeline_jobs.register_pipeline_handlers()
     # register at least one enrichment provider so the enrichment job is useful
     # (real Apollo/Clay adapters replace this stub at deploy time)
     enrichment.register_provider("titlefill",

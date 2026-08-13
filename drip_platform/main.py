@@ -47,6 +47,10 @@ audit_trail.register()
 def on_startup():
     from config import settings
     settings.validate_runtime()
+    # Registration is still fail-closed: importing does nothing, and this only
+    # registers SES after explicit opt-in plus complete local configuration.
+    from abm_platform.services import ses_delivery
+    ses_delivery.try_register()
     # Production schema is owned by Alembic; create_all can silently bypass
     # reviewed migrations and constraints. It remains convenient for local dev.
     if settings.env.lower() not in {"prod", "production"}:

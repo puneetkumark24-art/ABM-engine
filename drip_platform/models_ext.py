@@ -84,7 +84,47 @@ class EmailCampaign(Base):
     status = Column(String, default="draft")              # draft/scheduled/sending/sent/paused
     ab_config = Column(JSON, default=dict)                # {variants:[{name,subject}], metric}
     scheduled_at = Column(DateTime)
+    content_blocks = Column(JSON, default=list)
+    # Deliberately NOT a declarative ForeignKey. `email_campaigns` is created by
+    # the historical migration d4e8b1c5a7f9, which builds every table in
+    # models_ext.ALL_TABLES -- and that runs long before `email_brand_profiles`
+    # exists (created by w0e2f4a6b8d0, the last migration in the chain).
+    # Declaring the FK here made `alembic upgrade head` fail on a FRESH database
+    # with `relation "email_brand_profiles" does not exist`, while passing on an
+    # already-migrated one, because checkfirst=True skips the existing table.
+    # The constraint itself is added by w0e2f4a6b8d0 once both tables exist, so
+    # the database still enforces it -- see _ensure_brand_profile_fk() there.
+    brand_profile_id = Column(String(36), nullable=True)
+    approval_status = Column(String, default="draft")
+    version = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EmailBrandProfile(Base):
+    __tablename__ = "email_brand_profiles"
+    id = Column(String(36), primary_key=True, default=uid)
+    name = Column(String, nullable=False, unique=True)
+    logo_url = Column(String)
+    primary_color = Column(String(16), default="#2563eb")
+    accent_color = Column(String(16), default="#d4af37")
+    font_family = Column(String, default="Arial, sans-serif")
+    footer_html = Column(Text, default="")
+    sender_name = Column(String)
+    reply_to = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EmailCampaignRevision(Base):
+    __tablename__ = "email_campaign_revisions"
+    id = Column(String(36), primary_key=True, default=uid)
+    campaign_id = Column(String(36), ForeignKey("email_campaigns.id"), nullable=False)
+    version = Column(Integer, nullable=False)
+    snapshot = Column(JSON, nullable=False)
+    actor = Column(String, default="operator")
+    note = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("campaign_id", "version"),)
 
 
 class EmailMessage(Base):
@@ -97,6 +137,42 @@ class EmailMessage(Base):
     status = Column(String, default="queued")             # queued/sent/delivered/opened/clicked/bounced/complained/unsub
     sent_at = Column(DateTime)
     __table_args__ = (Index("idx_emsg_campaign", "campaign_id"),)
+
+
+class CampaignDispatchRun(Base):
+    __tablename__ = "campaign_dispatch_runs"
+    id = Column(String(36), primary_key=True, default=uid)
+    campaign_id = Column(String(36), ForeignKey("email_campaigns.id"), nullable=False)
+    status = Column(String, default="queued")  # queued/running/cancelling/cancelled/completed/failed
+    transport = Column(String, default="dry_run")
+    batch_size = Column(Integer, default=100)
+    total = Column(Integer, default=0)
+    processed = Column(Integer, default=0)
+    sent = Column(Integer, default=0)
+    blocked = Column(Integer, default=0)
+    held_for_human = Column(Integer, default=0)
+    existing_skipped = Column(Integer, default=0)
+    cancel_requested = Column(Boolean, default=False)
+    last_error = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime)
+    __table_args__ = (Index("idx_dispatch_run_campaign", "campaign_id", "created_at"),)
+
+
+class CampaignDispatchRecipient(Base):
+    __tablename__ = "campaign_dispatch_recipients"
+    id = Column(String(36), primary_key=True, default=uid)
+    run_id = Column(String(36), ForeignKey("campaign_dispatch_runs.id"), nullable=False)
+    person_id = Column(String(36), ForeignKey("persons.id"), nullable=False)
+    position = Column(Integer, nullable=False)
+    status = Column(String, default="pending")  # pending/sent/blocked/held/existing/failed
+    reason = Column(String)
+    processed_at = Column(DateTime)
+    __table_args__ = (
+        UniqueConstraint("run_id", "person_id"),
+        Index("idx_dispatch_recipient_claim", "run_id", "status", "position"),
+    )
 
 
 # ── Module 09 — Campaign Builder ─────────────────────────────
@@ -152,8 +228,10 @@ class SendRequest(Base):
     transport = Column(String, default="dry_run")         # dry_run / smtp / mandrill
     attempts = Column(Integer, default=0)
     detail = Column(Text)
+    provider_message_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     sent_at = Column(DateTime)
+    __table_args__ = (Index("idx_send_provider_message", "transport", "provider_message_id"),)
 
 
 class DeliveryEvent(Base):
@@ -166,6 +244,21 @@ class DeliveryEvent(Base):
     meta = Column(JSON, default=dict)
     occurred_at = Column(DateTime, default=datetime.utcnow)
     __table_args__ = (Index("idx_dev_msg", "message_id"),)
+
+
+class ProviderMessageMap(Base):
+    """Opaque global webhook routing directory; contains no recipient PII."""
+    __tablename__ = "provider_message_maps"
+    id = Column(String(36), primary_key=True, default=uid)
+    provider = Column(String(40), nullable=False)
+    provider_message_id = Column(String(255), nullable=False)
+    message_id = Column(String(80), nullable=False)
+    tenant_id = Column(String(36), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_message_id", name="uq_provider_message_map"),
+        Index("idx_provider_map_message", "tenant_id", "message_id"),
+    )
 
 
 # ── Module 12 — LinkedIn Automation ──────────────────────────

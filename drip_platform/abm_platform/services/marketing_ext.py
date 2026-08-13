@@ -67,8 +67,11 @@ def schedule_campaign(db: Session, campaign_id: str, at: datetime) -> mx.EmailCa
     camp = db.get(mx.EmailCampaign, campaign_id)
     if camp is None:
         raise ValueError("campaign not found")
-    if not marketing.resolve_members(db, camp.audience_id):
-        raise ValueError("audience empty at schedule time")     # MKT preflight
+    check = marketing.campaign_preflight(db, campaign_id)
+    if not check["ready_for_live"]:
+        raise ValueError("campaign preflight failed: " + ", ".join(x["code"] for x in check["errors"]))
+    if getattr(camp, "approval_status", "draft") != "approved":
+        raise ValueError("campaign requires approval before scheduling")
     camp.status = "scheduled"
     camp.scheduled_at = at
     db.commit()

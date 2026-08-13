@@ -63,7 +63,28 @@ def _sign(payload: str) -> str:
 
 
 # ── link rewriting (Mailchimp-style) ─────────────────────────
-_HREF_RE = re.compile(r'href="(https?://[^"]+)"')
+_HREF_RE = re.compile(r'''href\s*=\s*(["'])(https?://.+?)\1''', re.I)
+
+
+_TRACKED_HREF_RE = re.compile(r'href\s*=\s*(["\'])[^"\']*/t/c/[A-Za-z0-9]+\1', re.I)
+
+SAFE_SCHEMES = {"http", "https"}
+
+
+def is_safe_redirect(url: str | None) -> bool:
+    """Reject javascript:, data:, file:, vbscript:, protocol-relative //evil,
+    and anything else that would turn /t/c/<token> into an open redirect to a
+    scheme the browser executes rather than navigates to."""
+    if not url:
+        return False
+    stripped = url.strip()
+    if stripped.startswith("//"):      # protocol-relative: inherits https, hides host
+        return False
+    try:
+        parsed = urlparse(stripped)
+    except ValueError:
+        return False
+    return parsed.scheme.lower() in SAFE_SCHEMES and bool(parsed.netloc)
 
 
 def rewrite_links(db: Session, body_html: str, message_id: str,
@@ -71,21 +92,40 @@ def rewrite_links(db: Session, body_html: str, message_id: str,
     """Rewrite every http(s) link to a tracked redirect. UTM params are stored
     on the TrackedLink and appended at redirect time."""
     utm = utm or {}
+    body_html = body_html or ""
+    # Token reuse below keeps a re-render of the ORIGINAL body stable. This
+    # guard covers the other case, which is the one retries actually hit:
+    # re-running over the already-instrumented OUTPUT, where the rewritten
+    # href is itself an https URL and would be captured again.
+    if _TRACKED_HREF_RE.search(body_html):
+        return body_html
 
     def _sub(m):
-        original = m.group(1)
-        token = uuid.uuid4().hex[:20] + _sign(original + message_id)[:12]
-        db.add(p11.TrackedLink(token=token, message_id=message_id,
-                               original_url=original, utm=utm))
-        return f'href="{base_url}/t/c/{token}"'
+        quote, original = m.group(1), m.group(2)
+        if not is_safe_redirect(original):
+            return m.group(0)              # leave untrackable links untouched
+        existing = (db.query(p11.TrackedLink)
+                    .filter_by(message_id=message_id, original_url=original).first())
+        if existing:
+            token = existing.token
+            if (existing.utm or {}) != utm:
+                existing.utm = utm
+        else:
+            token = uuid.uuid4().hex[:20] + _sign(original + message_id)[:12]
+            db.add(p11.TrackedLink(token=token, message_id=message_id,
+                                   original_url=original, utm=utm))
+        return f'href={quote}{base_url.rstrip("/")}/t/c/{token}{quote}'
 
-    out = _HREF_RE.sub(_sub, body_html or "")
+    out = _HREF_RE.sub(_sub, body_html)
     db.commit()
     return out
 
 
 def inject_pixel(body_html: str, message_id: str, base_url: str = "") -> str:
-    pixel = f'<img src="{base_url}/t/o/{message_id}.gif" width="1" height="1" alt="">'
+    pixel_src = f"{base_url}/t/o/{message_id}.gif"
+    if pixel_src in (body_html or ""):
+        return body_html          # idempotent: exactly one pixel per message
+    pixel = f'<img src="{pixel_src}" width="1" height="1" alt="">'
     if "</body>" in (body_html or ""):
         return body_html.replace("</body>", pixel + "</body>")
     return (body_html or "") + pixel
@@ -102,6 +142,9 @@ def prepare_email(db: Session, body_html: str, message_id: str,
 def record_open(db: Session, message_id: str, meta: dict | None = None) -> None:
     """Pixel fired. Deduped per (message, day) so image-cache prefetch doesn't
     stack; opens are treated as approximate everywhere downstream."""
+    msg = db.query(mx.EmailMessage).filter_by(id=message_id).first()
+    if msg is None:
+        return
     day = datetime.utcnow().strftime("%Y%m%d")
     pid = f"pixel:{message_id}:{day}"
     if db.query(mx.DeliveryEvent).filter_by(provider_event_id=pid).first():
@@ -109,10 +152,10 @@ def record_open(db: Session, message_id: str, meta: dict | None = None) -> None:
     db.add(mx.DeliveryEvent(message_id=message_id, event_type="open",
                             provider="pixel", provider_event_id=pid,
                             meta=meta or {}))
-    msg = db.query(mx.EmailMessage).filter_by(id=message_id).first()
     if msg and msg.status in ("queued", "sent", "delivered"):
         msg.status = "opened"      # never downgrade clicked/replied/bounced
     db.commit()
+    _rescore_message_account(db, msg)
     publish(Event("email.event.open", key=message_id, payload=meta or {}))
 
 
@@ -122,6 +165,11 @@ def record_click(db: Session, token: str, visitor_id: str | None = None,
     URL with UTM appended — or None for unknown tokens."""
     link = db.query(p11.TrackedLink).filter_by(token=token).first()
     if link is None:
+        return None
+    # Re-validated at redirect time, not only at rewrite time: this endpoint is
+    # public, and a row written by any other code path would otherwise make it a
+    # working open redirect under our own sending domain.
+    if not is_safe_redirect(link.original_url):
         return None
     link.clicks = (link.clicks or 0) + 1
     pid = f"click:{token}:{link.clicks}"
@@ -135,6 +183,7 @@ def record_click(db: Session, token: str, visitor_id: str | None = None,
     if visitor_id:
         _touch_visitor(db, visitor_id, person_id=person_id, utm=link.utm)
     db.commit()
+    _rescore_message_account(db, msg)
     publish(Event("email.event.click", key=link.message_id,
                   payload={"url": link.original_url}))
 
@@ -144,6 +193,15 @@ def record_click(db: Session, token: str, visitor_id: str | None = None,
     q.update({k: v for k, v in (link.utm or {}).items()})
     parts[4] = urlencode(q)
     return urlunparse(parts)
+
+
+def _rescore_message_account(db: Session, msg: mx.EmailMessage | None) -> None:
+    if not msg:
+        return
+    person = db.get(models.Person, msg.person_id)
+    if person and person.current_org_id:
+        from . import engagement
+        engagement.rollup_org(db, person.current_org_id)
 
 
 def _touch_visitor(db: Session, visitor_id: str, person_id: str | None = None,

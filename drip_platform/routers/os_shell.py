@@ -1018,17 +1018,60 @@ SCREENS.campaign=async(el,id)=>{
  const rep=c.report||{};
  el.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><h2>${esc(c.name)}</h2>
   <span class="badge ${c.status==='sent'?'b-green':'b-dim'}">${esc(c.status||'')}</span>
-  <button class="act" style="margin:0" onclick="cmpSend('${id}')">Send (dry-run)</button>
+ <button class="act" style="margin:0" onclick="cmpSend('${id}')">Send (dry-run)</button>
+  <button class="act gold" style="margin:0" onclick="cmpApprove('${id}')">Approve</button>
+  <button class="act" style="margin:0" onclick="cmpDispatch('${id}')">Run batches</button>
+  <button class="act gold" style="margin:0" onclick="cmpPreview('${id}')">Preview</button>
+  <button class="act" style="margin:0;background:var(--line)" onclick="cmpTest('${id}')">Test</button>
+  <button class="act" style="margin:0;background:var(--line)" onclick="cmpDuplicate('${id}')">Duplicate</button>
   <button class="act" style="margin:0;background:var(--line)" onclick="nav('campaigns')">← all campaigns</button></div>
  <div class="sub">${esc(c.subject||'')}</div>
+ <div class="card" style="margin:10px 0"><b>Approval:</b> ${esc(c.approval_status||'draft')}</div>
+ <div class="card" id="cmprun" style="margin:10px 0">${c.dispatch?'loading run…':'<span class="muted">No batch run started.</span>'}</div>
  <div class="grid g4">${kpi('Sent',rep.sent??'—','')+kpi('Opens',rep.unique_opens??rep.opens??'—','')+kpi('Clicks',rep.unique_clicks??rep.clicks??'—','')+kpi('Replies',rep.replies??'—','')}</div>
+ <div class="grid g2" style="margin-top:12px"><div class="card"><h3>Pre-send checklist</h3><div id="cmpcheck">loading…</div></div><div class="card"><h3>Preview</h3><div id="cmppreview" class="muted">Choose Preview to render with a sample contact.</div></div></div>
  <div class="card" style="margin-top:12px"><h3>Recipients</h3><div id="cmr">loading…</div></div>`;
+ if(c.dispatch&&c.dispatch.id)cmpRunRender(c.dispatch.id);
+ const pf=await api('GET','/mkt/campaigns/'+id+'/preflight');if(pf.ok){const d=pf.data,items=[...(d.errors||[]),...(d.warnings||[])];document.getElementById('cmpcheck').innerHTML=`<span class="badge ${d.ready_for_live?'b-green':'b-gold'}">${d.ready_for_live?'ready':'needs attention'}</span><div class="muted" style="margin-top:8px">${d.audience.sendable} sendable · ${d.audience.blocked} blocked</div>`+(items.length?'<ul>'+items.map(x=>`<li>${esc(x.code)}${x.detail?': '+esc(x.detail):''}</li>`).join('')+'</ul>':'<div class="muted">All checks passed.</div>')}
  const m=await api('GET','/mkt/campaigns/'+id+'/messages');
  document.getElementById('cmr').innerHTML=(m.ok&&m.data.length)?
   '<table><tr><th>Contact</th><th>Email</th><th>Variant</th><th>Status</th><th>Events</th></tr>'+m.data.map(x=>
   `<tr><td>${esc(x.person||'')}</td><td class="muted">${esc(x.to||'')}</td><td>${esc(x.variant||'')}</td>
   <td><span class="badge b-dim">${esc(x.status||'')}</span></td><td class="muted">${(x.events||[]).join(', ')}</td></tr>`).join('')+'</table>':
   '<span class="muted">no messages yet — click "Send (dry-run)" to build the recipient list</span>';};
+window.cmpPreview=async id=>{const r=await api('GET','/mkt/campaigns/'+id+'/preview');if(r.ok)document.getElementById('cmppreview').innerHTML=`<div class="muted">Subject: ${esc(r.data.subject)}</div><iframe title="Email preview" style="width:100%;height:360px;border:1px solid var(--line);background:white" srcdoc="${esc(r.data.html)}"></iframe>`;else toast('Preview failed',true)};
+window.cmpTest=async id=>{const r=await api('POST','/mkt/campaigns/'+id+'/test-send');toast(r.ok?'Test rendered safely (dry-run).':'Test failed',!r.ok)};
+window.cmpDuplicate=async id=>{const r=await api('POST','/mkt/campaigns/'+id+'/duplicate');if(r.ok){toast('Campaign duplicated.');nav('campaign/'+r.data.id)}else toast('Duplicate failed',true)};
+window.cmpApprove=async id=>{const r=await api('POST','/mkt/campaigns/'+id+'/approval',{actor:'dashboard operator',decision:'approve',note:'approved from campaign workspace'});if(r.ok){toast('Campaign approved.');nav('campaign/'+id)}else toast('Approval failed: '+(r.data&&r.data.detail||r.status),true)};
+window.cmpDispatch=async id=>{const r=await api('POST','/mkt/campaigns/'+id+'/dispatch',{batch_size:100});if(!r.ok){toast('Batch run could not start: '+(r.data&&r.data.detail||r.status),true);return}toast(`Batch run queued for ${r.data.total} recipients.`);window._cmpRunId=r.data.id;cmpRunRender(r.data.id);};
+/* The run is asynchronous: starting it is not the same as seeing it through.
+   Until this existed an operator could launch a batch run and then had no way
+   to watch it or stop it -- the API had both, the screen called neither. */
+window.cmpRunRender=async runId=>{
+ const box=document.getElementById('cmprun');if(!box||!runId)return;
+ const r=await api('GET','/mkt/campaign-dispatch/'+runId);
+ if(!r.ok){box.innerHTML=state('Run status unavailable ('+r.status+').',true);return}
+ const d=r.data,active=['queued','running','cancelling'].includes(d.status);
+ const pct=d.total?Math.round((d.processed||0)/d.total*100):0;
+ box.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+   <b>Batch run</b> <span class="badge ${d.status==='completed'?'b-green':d.status==='failed'?'':'b-gold'}"
+     ${d.status==='failed'?'style="background:var(--red)"':''}>${esc(d.status)}</span>
+   <span class="muted">${d.processed||0}/${d.total||0} (${pct}%)</span>
+   <span class="badge b-dim">${esc(d.transport||'dry_run')}</span>
+   ${active?`<button class="act" style="margin:0;padding:3px 10px" onclick="cmpRunCancel('${d.id}')">Cancel run</button>`:''}</div>
+  <div class="grid g4" style="margin-top:10px">${
+    kpi('Sent',d.sent||0,'dry-run')+kpi('Blocked',d.blocked||0,'consent/suppression')+
+    kpi('Held',d.held_for_human||0,'c-suite review')+kpi('Existing',d.existing_skipped||0,'already messaged')}</div>
+  <div class="grid g2" style="margin-top:10px">${
+    kpi('Failed',Math.max(0,(d.processed||0)-((d.sent||0)+(d.blocked||0)+(d.held_for_human||0)+(d.existing_skipped||0))),'batch errors')+
+    kpi('Total',d.total||0,'snapshotted at start')}</div>
+  ${d.last_error?`<div class="muted" style="margin-top:8px;color:var(--red)">Last error: ${esc(d.last_error)}</div>`:''}`;
+ if(active)setTimeout(()=>cmpRunRender(runId),2000);};
+window.cmpRunCancel=async runId=>{
+ const r=await api('POST','/mkt/campaign-dispatch/'+runId+'/cancel');
+ if(!r.ok){toast('Cancel failed: '+(r.data&&r.data.detail||r.status),true);return}
+ toast('Cancellation requested — batches already running will finish, later ones will not start.');
+ cmpRunRender(runId);};
 
 SCREENS.journeys=async el=>{
  el.innerHTML=`<h2>Journeys</h2><div class="sub">Multi-step orchestration: send → wait → branch.</div>
@@ -1058,11 +1101,45 @@ window.sgMake=async()=>{let conds;try{conds=JSON.parse(document.getElementById('
  const s=await api('GET','/crm/segments/'+r.data.id);document.getElementById('sgout').textContent=JSON.stringify(s.data,null,1);};
 
 SCREENS.email=async el=>{
- el.innerHTML='<h2>Email Analytics</h2><div class="sub">Sends, opens, clicks, CTOR — across campaigns.</div><div class="grid g3" id="ek"></div><div class="card" style="margin-top:14px"><h3>Per campaign</h3><div id="ec">—</div></div>';
- const r=await api('GET','/analytics/email');if(!r.ok)return;const d=r.data,t=d.totals,ra=d.rates;
- document.getElementById('ek').innerHTML=kpi('Sent',t.sent,'delivered '+ra.delivery_rate+'%')+kpi('Open rate',ra.open_rate+'%',t.unique_opens+' unique')+kpi('CTOR',ra.ctor+'%','bounces '+t.bounces);
- document.getElementById('ec').innerHTML=d.per_campaign.length?'<table><tr><th>Campaign</th><th>Sent</th><th>Open%</th><th>Click%</th></tr>'+d.per_campaign.map(c=>
-  `<tr><td>${esc(c.campaign)}</td><td>${c.sent}</td><td>${c.open_rate}</td><td>${c.click_rate}</td></tr>`).join('')+'</table>':'<span class="muted">no sends in window</span>';};
+ el.innerHTML=`<h2>Email Analytics</h2><div class="sub">Delivery, engagement and list health. Simulated activity is labelled as such — it is never counted as delivery.</div>
+ <div id="emode"></div>
+ <div class="grid g4" id="ek">${kpi('Sent','…','loading')+kpi('Delivered','…','loading')+kpi('Open rate','…','loading')+kpi('CTOR','…','loading')}</div>
+ <div class="grid g4" id="ek2" style="margin-top:12px"></div>
+ <div class="grid g2" style="margin-top:14px"><div class="card"><h3>Per campaign</h3><div id="ec">loading…</div></div>
+ <div class="card"><h3>Most clicked links</h3><div id="el">loading…</div></div></div>`;
+ const r=await api('GET','/analytics/email');
+ if(!r.ok){el.innerHTML+=state(r.status===401?'Sign in to view email analytics.':'Email analytics could not be loaded.',true,
+   `<button class="act" onclick="${r.status===401?"nav('settings')":"route()"}">${r.status===401?'Go to sign in':'Retry'}</button>`);return}
+ const d=r.data,t=d.totals,ra=d.rates;
+ // Be explicit about what these numbers ARE. A dry-run number shown in the same
+ // style as a live one is how a simulation gets mistaken for a campaign.
+ const live=(t.delivered||0)>0, sim=(t.simulated_delivered||0)>0;
+ document.getElementById('emode').innerHTML=
+   `<div class="status-strip"><div class="status-item"><strong>Mode</strong> ${esc(d.mode||(sim&&!live?'simulation':'mixed'))}</div>`+
+   (sim?`<div class="status-item"><strong>${t.simulated_delivered}</strong> simulated (dry-run) — not real delivery</div>`:'')+
+   (live?`<div class="status-item"><strong>${t.delivered}</strong> confirmed by provider receipt</div>`:
+         `<div class="status-item"><strong>No provider receipts yet</strong> — 'delivered' stays 0 until a webhook confirms it</div>`)+
+   `</div>`;
+ document.getElementById('ek').innerHTML=
+   kpi('Attempted',t.attempted??t.sent,(t.accepted||0)+' accepted by provider')+
+   kpi('Delivered',t.delivered,ra.delivery_rate+'% of attempted')+
+   kpi('Open rate',ra.open_rate+'%',(t.unique_opens||0)+' unique opens')+
+   kpi('CTOR',ra.ctor+'%',(t.unique_clicks||0)+' unique clicks');
+ document.getElementById('ek2').innerHTML=
+   kpi('Hard bounces',t.hard_bounces||0,ra.hard_bounce_rate+'% — list quality')+
+   kpi('Soft bounces',t.soft_bounces||0,ra.soft_bounce_rate+'% — retryable')+
+   kpi('Complaints',t.complaints||0,ra.complaint_rate+'% — spam reports')+
+   kpi('Unsubscribes',t.unsubscribes||0,ra.unsubscribe_rate+'%');
+ document.getElementById('ec').innerHTML=(d.per_campaign||[]).length?
+  '<div class="table-wrap"><table><tr><th>Campaign</th><th>Status</th><th>Sent</th><th>Deliv.</th><th>Open%</th><th>Click%</th><th>Bounces</th><th>Spam</th></tr>'+d.per_campaign.map(c=>
+  `<tr><td>${esc(c.campaign)}</td><td><span class="badge ${c.status==='paused'?'b-dim':c.status==='sent'?'b-green':'b-gold'}">${esc(c.status||'')}</span></td>
+   <td>${c.sent}</td><td>${c.delivered??0}</td><td>${c.open_rate}</td><td>${c.click_rate}</td>
+   <td>${(c.soft_bounces||0)+(c.hard_bounces||0)}</td><td>${c.complaints||0}</td></tr>`).join('')+'</table></div>':
+  state('No campaigns have sent in this window.');
+ document.getElementById('el').innerHTML=(d.top_links||[]).length?
+  '<div class="table-wrap"><table><tr><th>URL</th><th>Clicks</th></tr>'+d.top_links.slice(0,10).map(l=>
+  `<tr><td class="muted" style="word-break:break-all">${esc(l.url)}</td><td>${l.clicks}</td></tr>`).join('')+'</table></div>':
+  state('No link clicks recorded yet.');};
 
 let _pipe={view:'board',q:'',bank:'',min:0,sort:'amount'};
 SCREENS.pipeline=async el=>{

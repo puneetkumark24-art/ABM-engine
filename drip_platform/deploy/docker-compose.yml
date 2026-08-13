@@ -97,6 +97,18 @@ services:
       api: {condition: service_started}
     restart: unless-stopped
 
+  # Activated only with: docker compose --profile ses-events up ses-events
+  ses-events:
+    profiles: ["ses-events"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment: *app-env
+    command: ["python", "deploy/ses_events_main.py"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:

@@ -98,6 +98,12 @@ def _fail(db: Session, job: mj.Job, err: str) -> None:
         job.status = "dead"; job.last_error = err; job.finished_at = datetime.utcnow()
         logger.error("job %s (%s) dead after %d attempts: %s", job.id, job.kind, job.attempts, err)
         publish(Event("job.dead", key=job.id, payload={"kind": job.kind, "error": err}))
+        if job.kind == "campaign_dispatch_batch" and (job.payload or {}).get("run_id"):
+            import models_ext as mx
+            run = db.get(mx.CampaignDispatchRun, job.payload["run_id"])
+            if run and run.status in {"queued", "running", "cancelling"}:
+                run.status = "failed"; run.last_error = err[:2000]
+                run.finished_at = datetime.utcnow()
     else:
         backoff = BACKOFF_SECONDS[min(job.attempts - 1, len(BACKOFF_SECONDS) - 1)]
         job.status = "queued"; job.last_error = err
@@ -106,9 +112,24 @@ def _fail(db: Session, job: mj.Job, err: str) -> None:
     db.commit()
 
 
+def recover_stale(db: Session, stale_minutes: int = 15) -> int:
+    """Return jobs abandoned by a crashed worker to the queue."""
+    cutoff = datetime.utcnow() - timedelta(minutes=max(1, stale_minutes))
+    stale = (db.query(mj.Job).filter(mj.Job.status == "running",
+                                     mj.Job.locked_at < cutoff).all())
+    for job in stale:
+        job.status = "queued"; job.locked_by = None; job.locked_at = None
+        job.run_after = datetime.utcnow()
+        job.last_error = "recovered after worker lease expired"
+    if stale:
+        db.commit()
+    return len(stale)
+
+
 def run_once(db: Session, limit: int = 10) -> dict:
     """Claim and execute a batch. Each job runs the registered handler; the
     handler's exceptions become retries/dead-letters — never a lost job."""
+    recovered = recover_stale(db)
     jobs = claim_batch(db, limit)
     done = failed = 0
     for job in jobs:
@@ -121,7 +142,8 @@ def run_once(db: Session, limit: int = 10) -> dict:
         except Exception as e:
             db.rollback()
             _fail(db, job, str(e)); failed += 1
-    return {"claimed": len(jobs), "done": done, "failed": failed}
+    return {"claimed": len(jobs), "done": done, "failed": failed,
+            "recovered": recovered}
 
 
 def run_worker(poll_seconds: float = 1.0, batch: int = 10, max_iterations: Optional[int] = None):

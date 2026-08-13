@@ -17,6 +17,7 @@ Also provides:
   pick_variant()          — multivariate (>2) weighted selection
 """
 from __future__ import annotations
+import os
 import random
 import uuid
 from datetime import datetime, timedelta
@@ -24,7 +25,7 @@ from sqlalchemy.orm import Session
 import models_s3 as m3
 import models
 import models_ext as mx
-from . import marketing, marketing_ext, delivery, attribution, engagement
+from . import marketing, marketing_ext, delivery, attribution, engagement, tracking
 
 _SEND, _WAIT, _BRANCH, _EXIT = "send", "wait", "branch", "exit"
 _NODE_TYPES = {_SEND, _WAIT, _BRANCH, _EXIT}
@@ -138,6 +139,12 @@ def tick(db: Session, now: datetime | None = None,
                     subject = marketing_ext.render_merge(db, node.get("subject") or j.name, person)
                     raw_body = node.get("body") or node.get("content") or ""
                     body = marketing_ext.render_merge(db, raw_body, person)
+                    if os.environ.get("EMAIL_TRACKING_ENABLED", "true").lower() == "true":
+                        body = tracking.prepare_email(
+                            db, body, mid,
+                            utm={"utm_source": "drip", "utm_medium": "email",
+                                 "utm_campaign": j.id, "utm_content": node["id"]},
+                            base_url=os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000"))
                     req = delivery.enqueue(db, message_id=mid, to_email=person.primary_email,
                                            subject=subject, body=body, transport="dry_run")
                     if req.status != "sent":

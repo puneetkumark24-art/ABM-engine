@@ -17,27 +17,8 @@ SES_REGION_ENV = "AWS_SES_REGION"
 
 
 def try_register_ses() -> tuple[bool, str]:
-    import os
-    if os.environ.get(SES_ENV_FLAG, "").lower() != "true":
-        return False, f"{SES_ENV_FLAG} not set — staying dry-run (deliberate)"
-    try:
-        import boto3  # noqa: F401
-    except ImportError:
-        return False, "boto3 not installed"
-    region = __import__("os").environ.get(SES_REGION_ENV, "me-south-1")
-
-    def _ses_transport(req: "mx.SendRequest") -> str:
-        import boto3
-        client = boto3.client("sesv2", region_name=region)
-        resp = client.send_email(
-            FromEmailAddress=__import__("os").environ.get("SES_FROM", "noreply@example.invalid"),
-            Destination={"ToAddresses": [req.to_email]},
-            Content={"Simple": {"Subject": {"Data": req.subject or ""},
-                                "Body": {"Html": {"Data": req.body or ""}}}})
-        return resp["MessageId"]
-
-    delivery.register_transport("ses", _ses_transport)
-    return True, f"SES transport registered (region {region})"
+    from . import ses_delivery
+    return ses_delivery.try_register()
 
 
 # ── Mailchimp Transactional (Mandrill) adapter ─────────────────
@@ -139,8 +120,11 @@ def retry_failed(db: Session, now: datetime | None = None, limit: int = 50) -> d
         try:
             provider_id = fn(req)
             req.status = "sent"; req.sent_at = now
+            req.provider_message_id = provider_id or None
+            if req.transport != "dry_run" and provider_id:
+                delivery.bind_provider_message(db, req.transport, provider_id, req.message_id)
             req.attempts += 1
-            db.add(mx.DeliveryEvent(message_id=req.message_id, event_type="delivered",
+            db.add(mx.DeliveryEvent(message_id=req.message_id, event_type="accepted",
                                     provider=req.transport,
                                     provider_event_id=f"{provider_id}:retry{req.attempts}"))
             succeeded += 1
@@ -158,7 +142,9 @@ def retry_failed(db: Session, now: datetime | None = None, limit: int = 50) -> d
 
 # ── mid-send auto-pause (Mailchimp's safety behaviour) ───────
 PAUSE_BOUNCE_RATE = 0.05      # 5%
+PAUSE_HARD_BOUNCE_RATE = 0.02 # 2% permanent failures
 PAUSE_SPAM_RATE = 0.002       # 0.2%
+PAUSE_UNSUB_RATE = 0.02       # 2% signals targeting/content problems
 MIN_SENDS_FOR_CHECK = 20
 
 
@@ -175,24 +161,44 @@ def check_campaign_health(db: Session, campaign_id: str) -> dict:
     ids = [m.id for m in msgs]
     events = (db.query(mx.DeliveryEvent)
               .filter(mx.DeliveryEvent.message_id.in_(ids)).all())
+    from .email_events import normalize
     bounced = len({e.message_id for e in events
-                   if e.event_type in ("bounce", "hard_bounce")})
+                   if normalize(e.event_type) in ("soft_bounce", "hard_bounce")})
+    hard_bounced = len({e.message_id for e in events
+                        if normalize(e.event_type) == "hard_bounce"})
     spam = len({e.message_id for e in events
-                if e.event_type in ("complaint", "spam")})
+                if normalize(e.event_type) == "complaint"})
+    unsub = len({e.message_id for e in events
+                 if normalize(e.event_type) == "unsubscribe"})
     n = len(msgs)
-    bounce_rate, spam_rate = bounced / n, spam / n
-    if bounce_rate > PAUSE_BOUNCE_RATE or spam_rate > PAUSE_SPAM_RATE:
+    bounce_rate, hard_rate = bounced / n, hard_bounced / n
+    spam_rate, unsub_rate = spam / n, unsub / n
+    breached = []
+    if bounce_rate > PAUSE_BOUNCE_RATE: breached.append("total_bounce_rate")
+    if hard_rate > PAUSE_HARD_BOUNCE_RATE: breached.append("hard_bounce_rate")
+    if spam_rate > PAUSE_SPAM_RATE: breached.append("complaint_rate")
+    if unsub_rate > PAUSE_UNSUB_RATE: breached.append("unsubscribe_rate")
+    if breached:
         camp.status = "paused"
         db.commit()
         from . import notification
         notification.send(db, "Puneet", "anomaly",
                           payload={"campaign": camp.name,
                                    "bounce_rate": round(bounce_rate, 4),
-                                   "spam_rate": round(spam_rate, 4)},
+                                   "hard_bounce_rate": round(hard_rate, 4),
+                                   "spam_rate": round(spam_rate, 4),
+                                   "unsubscribe_rate": round(unsub_rate, 4),
+                                   "breached": breached},
                           priority="urgent")
         publish(Event("email.campaign.autopaused", key=campaign_id,
-                      payload={"bounce_rate": bounce_rate, "spam_rate": spam_rate}))
+                      payload={"bounce_rate": bounce_rate, "hard_bounce_rate": hard_rate,
+                               "spam_rate": spam_rate, "unsubscribe_rate": unsub_rate,
+                               "breached": breached}))
         return {"action": "paused", "bounce_rate": round(bounce_rate, 4),
-                "spam_rate": round(spam_rate, 4)}
+                "hard_bounce_rate": round(hard_rate, 4),
+                "spam_rate": round(spam_rate, 4),
+                "unsubscribe_rate": round(unsub_rate, 4), "breached": breached}
     return {"action": "none", "bounce_rate": round(bounce_rate, 4),
-            "spam_rate": round(spam_rate, 4)}
+            "hard_bounce_rate": round(hard_rate, 4),
+            "spam_rate": round(spam_rate, 4),
+            "unsubscribe_rate": round(unsub_rate, 4), "breached": []}

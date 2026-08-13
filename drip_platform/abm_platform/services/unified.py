@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 import models
 import models_ext as mx
 import models_p10 as p10
+import models_p11 as p11
 import models_crm2 as m2
 import models_s3 as m3
 import models_s8 as m8
@@ -154,12 +155,9 @@ def executive_dashboard(db: Session, now: datetime | None = None) -> dict:
         "weighted_minor": int(weighted),
         "weighted_sar": f"SAR {weighted/100:,.0f}",
         "signals_this_week": signals_week,
-        # Name and account, not just the id. The dashboard was rendering
+        # Name and account, not just the id. The dashboard rendered
         # `person_id.slice(0,8)` -- a truncated UUID -- because that was the
-        # only identifying field this payload carried, so "Hot leads" read as a
-        # list of meaningless hex strings. sales_engagement.hot_leads() already
-        # resolves the name for the /sales/hot-leads endpoint; this one just
-        # never did.
+        # only identifying field this payload carried.
         "hot_leads": [{"person_id": h.person_id,
                        "name": _person_label(db, h.person_id),
                        "org": _person_org(db, h.person_id),
@@ -223,7 +221,9 @@ def growth_operations(db: Session, now: datetime | None = None) -> dict:
 
 
 # ── email analytics ──────────────────────────────────────────
-_EV = ("delivered", "open", "click", "bounce", "complaint", "unsubscribe", "reply")
+_EV = ("accepted", "delivered", "simulated_delivered", "open", "click",
+       "soft_bounce", "hard_bounce", "rejected", "failed", "complaint",
+       "unsubscribe", "reply")
 
 
 def email_analytics(db: Session, campaign_id: str | None = None,
@@ -242,16 +242,18 @@ def email_analytics(db: Session, campaign_id: str | None = None,
            .filter(mx.DeliveryEvent.occurred_at >= since))
     events = [e for e in evq.all() if e.message_id in msg_ids] if msg_ids else []
 
+    from .email_events import normalize
     counts = {k: 0 for k in _EV}
     uniq: dict[str, set] = {k: set() for k in _EV}
     for e in events:
-        et = (e.event_type or "").lower()
-        for k in _EV:
-            if k in et:
-                counts[k] += 1
-                uniq[k].add(e.message_id)
+        et = normalize(e.event_type)
+        if et in counts:
+            counts[et] += 1
+            uniq[et].add(e.message_id)
 
-    delivered = counts["delivered"] or sent  # if no delivery receipts, assume sent
+    accepted = len(uniq["accepted"])
+    delivered = len(uniq["delivered"])
+    simulated = len(uniq["simulated_delivered"])
     u_open, u_click = len(uniq["open"]), len(uniq["click"])
 
     def rate(n, d):
@@ -263,28 +265,80 @@ def email_analytics(db: Session, campaign_id: str | None = None,
             cm = [m for m in messages if m.campaign_id == c.id]
             cm_ids = {m.id for m in cm}
             ce = [e for e in events if e.message_id in cm_ids]
-            copen = len({e.message_id for e in ce if "open" in (e.event_type or "")})
-            cclick = len({e.message_id for e in ce if "click" in (e.event_type or "")})
+            cev = [(e, normalize(e.event_type)) for e in ce]
+            cuniq = lambda kind: len({e.message_id for e, et in cev if et == kind})
+            copen, cclick = cuniq("open"), cuniq("click")
+            cdelivered = cuniq("delivered")
+            csoft, chard = cuniq("soft_bounce"), cuniq("hard_bounce")
             if cm:
-                per_campaign.append({"campaign": c.name, "sent": len(cm),
+                per_campaign.append({"campaign_id": c.id, "campaign": c.name,
+                                     "status": c.status, "sent": len(cm),
+                                     "delivered": cdelivered,
                                      "unique_opens": copen, "unique_clicks": cclick,
-                                     "open_rate": rate(copen, len(cm)),
-                                     "click_rate": rate(cclick, len(cm))})
+                                     "soft_bounces": csoft, "hard_bounces": chard,
+                                     "complaints": cuniq("complaint"),
+                                     "unsubscribes": cuniq("unsubscribe"),
+                                     "open_rate": rate(copen, cdelivered),
+                                     "click_rate": rate(cclick, cdelivered),
+                                     "ctor": rate(cclick, copen)})
+
+    reqs = (db.query(mx.SendRequest)
+            .filter(mx.SendRequest.message_id.in_(msg_ids)).all()) if msg_ids else []
+    failed = sum(1 for r in reqs if r.status == "failed")
+    blocked = sum(1 for r in reqs if r.status == "blocked")
+    soft_bounces, hard_bounces = len(uniq["soft_bounce"]), len(uniq["hard_bounce"])
+    top_links = []
+    if msg_ids:
+        links = (db.query(p11.TrackedLink)
+                 .filter(p11.TrackedLink.message_id.in_(msg_ids))
+                 .order_by(p11.TrackedLink.clicks.desc()).limit(20).all())
+        top_links = [{"url": x.original_url, "clicks": x.clicks or 0,
+                      "message_id": x.message_id} for x in links if x.clicks]
+    daily: dict[str, dict[str, int]] = {}
+    for e in events:
+        day = (e.occurred_at or now).date().isoformat()
+        bucket = daily.setdefault(day, {"delivered": 0, "opens": 0, "clicks": 0,
+                                        "bounces": 0, "unsubscribes": 0})
+        et = normalize(e.event_type)
+        if et == "delivered": bucket["delivered"] += 1
+        elif et == "open": bucket["opens"] += 1
+        elif et == "click": bucket["clicks"] += 1
+        elif et in ("soft_bounce", "hard_bounce"): bucket["bounces"] += 1
+        elif et == "unsubscribe": bucket["unsubscribes"] += 1
 
     return {
         "window_days": since_days,
-        "totals": {"sent": sent, "delivered": delivered, "opens": counts["open"],
+        # "empty" must be distinguishable from "we delivered nothing": a fresh
+        # install and a campaign that bounced 100% both show zeros otherwise.
+        "mode": ("empty" if not sent and not events else
+                 "mixed" if simulated and delivered else
+                 "simulation" if simulated else "provider_receipts"),
+        "totals": {"attempted": sent, "sent": sent, "accepted": accepted,
+                   "delivered": delivered, "simulated_delivered": simulated,
+                   "opens": counts["open"],
                    "clicks": counts["click"], "unique_opens": u_open,
                    "unique_clicks": u_click, "replies": counts["reply"],
-                   "bounces": counts["bounce"], "complaints": counts["complaint"],
-                   "unsubscribes": counts["unsubscribe"]},
-        "rates": {"delivery_rate": rate(delivered, sent),
+                   "soft_bounces": soft_bounces, "hard_bounces": hard_bounces,
+                   "bounces": soft_bounces + hard_bounces,
+                   "rejected": len(uniq["rejected"]), "failed": failed,
+                   "blocked": blocked, "complaints": len(uniq["complaint"]),
+                   "unsubscribes": len(uniq["unsubscribe"])},
+        "rates": {"acceptance_rate": rate(accepted, sent),
+                  "delivery_rate": rate(delivered, sent),
                   "open_rate": rate(u_open, delivered),
                   "click_rate": rate(u_click, delivered),
                   "ctr": rate(counts["click"], delivered),
                   "ctor": rate(u_click, u_open),
-                  "bounce_rate": rate(counts["bounce"], sent),
-                  "unsubscribe_rate": rate(counts["unsubscribe"], delivered)},
+                  "soft_bounce_rate": rate(soft_bounces, sent),
+                  "hard_bounce_rate": rate(hard_bounces, sent),
+                  "bounce_rate": rate(soft_bounces + hard_bounces, sent),
+                  "complaint_rate": rate(len(uniq["complaint"]), delivered),
+                  "unsubscribe_rate": rate(len(uniq["unsubscribe"]), delivered)},
+        "top_links": top_links,
+        "timeline": [{"date": day, **values} for day, values in sorted(daily.items())],
+        "notes": {"opens_are_approximate": True,
+                  "delivery_requires_provider_receipt": True,
+                  "simulation_is_not_real_delivery": True},
         "per_campaign": sorted(per_campaign, key=lambda x: -x["sent"]),
     }
 

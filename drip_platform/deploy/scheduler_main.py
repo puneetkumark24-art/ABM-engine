@@ -95,6 +95,8 @@ def tick():
 
 
 def main():
+    from abm_platform.services import ses_delivery
+    ses_delivery.try_register()
     print(f"[scheduler] up; tick={TICK}s window={RESPECT_WINDOW}", flush=True)
     while True:
         try:

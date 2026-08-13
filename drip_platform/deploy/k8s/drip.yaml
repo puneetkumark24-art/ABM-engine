@@ -16,6 +16,8 @@ data:
   RESPECT_SEND_WINDOW: "true"
   LOG_LEVEL: "INFO"
   ENABLE_SES_TRANSPORT: "false"
+  EMAIL_LIVE_SENDING_ENABLED: "false"
+  EMAIL_TRANSPORT: "dry_run"
 ---
 apiVersion: v1
 kind: Secret
@@ -112,3 +114,32 @@ spec:
           envFrom:
             - configMapRef: { name: drip-config }
             - secretRef: { name: drip-secrets }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: drip-ses-events, namespace: drip }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: drip-ses-events } }
+  template:
+    metadata: { labels: { app: drip-ses-events } }
+    spec:
+      serviceAccountName: drip-ses-events
+      containers:
+        - name: ses-events
+          image: REGISTRY/drip:latest
+          command: ["python", "deploy/ses_events_main.py"]
+          envFrom:
+            - configMapRef: { name: drip-config }
+            - secretRef: { name: drip-secrets }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: drip-ses-events
+  namespace: drip
+  annotations:
+    eks.amazonaws.com/role-arn: "REPLACE_WITH_SES_RECEIPT_ROLE_ARN"

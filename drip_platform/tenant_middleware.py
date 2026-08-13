@@ -26,7 +26,13 @@ PUBLIC_PREFIXES = ("/t/", "/p/", "/health", "/metrics", "/docs", "/openapi.json"
 # Exact-match public pages (NOT prefixes — "/" as a prefix would open everything):
 # the portal and console are static shells; every API call they make is still
 # individually authorized.
-PUBLIC_EXACT = ("/", "/app", "/legacy", "/legacy-portal")
+# Provider callbacks are unauthenticated by nature -- Mandrill cannot hold a
+# JWT -- but they are NOT unprotected: each verifies a provider signature over
+# the raw body before it is allowed to touch anything, and a failed signature
+# is a 401. They are listed here only so the JWT middleware lets the request
+# reach that signature check.
+PUBLIC_EXACT = ("/", "/app", "/legacy", "/legacy-portal",
+                "/px/delivery/webhook", "/px/delivery/webhook/mandrill")
 
 # Route-level authorization: (path prefix, required scope). Longest match wins.
 # Scopes use wildcards (crm.* grants crm.read). Extend as routers are added.

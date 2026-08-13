@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -75,6 +75,11 @@ def campaign_rep(campaign_id: str, db: Session = Depends(get_db)):
     return marketing.campaign_report(db, campaign_id)
 
 
+@router.get("/marketing/campaigns/{campaign_id}/preflight")
+def campaign_preflight(campaign_id: str, db: Session = Depends(get_db)):
+    return marketing.campaign_preflight(db, campaign_id)
+
+
 # ---- 09 abm campaign ----
 @router.post("/campaigns")
 def mk_abm_campaign(name: str, objective: str = "pipeline", db: Session = Depends(get_db)):
@@ -103,8 +108,81 @@ def generate(req: GenReq, db: Session = Depends(get_db)):
 
 # ---- 11 delivery ----
 @router.post("/delivery/webhook")
-def webhook(events: list[dict], db: Session = Depends(get_db)):
+async def webhook(request: Request, db: Session = Depends(get_db)):
+    """Provider-neutral signed webhook. Unsigned event mutation is forbidden."""
+    import json
+    import os
+    from webhook_security import verify_hmac_sha256
+    raw = await request.body()
+    secret = os.environ.get("EMAIL_WEBHOOK_SECRET", "")
+    if not secret:
+        raise HTTPException(503, "email webhook is not configured")
+    signature = request.headers.get("X-DRIP-Signature", "")
+    if not verify_hmac_sha256(raw, signature, secret):
+        raise HTTPException(401, "invalid webhook signature")
+    try:
+        events = json.loads(raw)
+    except (ValueError, TypeError):
+        raise HTTPException(400, "invalid JSON")
+    if not isinstance(events, list):
+        raise HTTPException(400, "expected a list of events")
+    if len(events) > 1000:
+        raise HTTPException(413, "event batch exceeds 1000 items")
     return delivery.ingest_webhook(db, events)
+
+
+@router.head("/delivery/webhook/mandrill")
+def mandrill_webhook_probe():
+    return {}
+
+
+@router.post("/delivery/webhook/mandrill")
+async def mandrill_webhook(request: Request, db: Session = Depends(get_db)):
+    """Verified native Mailchimp Transactional webhook receiver."""
+    import json
+    import os
+    from urllib.parse import parse_qs
+    from webhook_security import verify_mandrill
+    from abm_platform.services import mandrill_events
+
+    raw = await request.body()
+    if len(raw) > 5_000_000:
+        raise HTTPException(413, "webhook body exceeds 5 MB")
+    try:
+        parsed = parse_qs(raw.decode("utf-8", errors="strict"), keep_blank_values=True)
+    except UnicodeDecodeError:
+        raise HTTPException(400, "invalid form encoding")
+    params = {key: values[-1] for key, values in parsed.items()}
+    events_raw = params.get("mandrill_events")
+    if events_raw is None:
+        raise HTTPException(400, "missing mandrill_events")
+    secret = os.environ.get("MANDRILL_WEBHOOK_KEY", "")
+    signed_url = os.environ.get("MANDRILL_WEBHOOK_URL", "")
+    if not secret or not signed_url:
+        raise HTTPException(503, "Mandrill webhook is not configured")
+    signature = request.headers.get("X-Mandrill-Signature", "")
+    if not verify_mandrill(raw, signed_url, params, signature, secret):
+        raise HTTPException(401, "invalid Mandrill signature")
+    try:
+        canonical, mapping_rejections = mandrill_events.translate(json.loads(events_raw))
+    except json.JSONDecodeError:
+        raise HTTPException(400, "mandrill_events is not valid JSON")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except OverflowError as exc:
+        raise HTTPException(413, str(exc))
+    result = delivery.ingest_webhook(db, canonical)
+    result["provider"] = "mandrill"
+    result["mapping_rejected"] = len(mapping_rejections)
+    result["mapping_errors"] = mapping_rejections[:20]
+    return result
+
+
+@router.get("/delivery/activation")
+def delivery_activation(db: Session = Depends(get_db)):
+    """Why real sending is or is not permitted, check by check."""
+    from abm_platform.services import send_activation
+    return send_activation.activation_report(db).as_dict()
 
 
 @router.get("/delivery/messages/{message_id}/events")
